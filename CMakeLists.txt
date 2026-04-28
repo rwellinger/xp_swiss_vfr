@@ -44,6 +44,7 @@ set(XP_SWISS_VFR_DATA_SOURCES
 # SDK-coupled (XPLM menus + FMS API) and only compiled into the plugin.
 set(XP_SWISS_VFR_PROCEDURE_DATA_SOURCES
     src/procedures/build_procedure.cpp
+    src/procedures/procedure_state.cpp
 )
 
 # Geometry helpers (lat/lon math) are SDK-free and reused by the test target.

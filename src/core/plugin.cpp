@@ -101,8 +101,7 @@ void apply_navigraph_overrides_if_available()
     auto overrides = data::parse_navigraph_vrps(xplane_root / "Custom Data" / "earth_fix.dat", icao_set);
     auto stats     = data::apply_navigraph_overrides(s_database, overrides);
 
-    log_line("[xp_swiss_vfr] Navigraph detected; upgraded " + std::to_string(stats.upgraded) +
-             " VRP coordinate(s).\n");
+    log_line("[xp_swiss_vfr] Navigraph detected; upgraded " + std::to_string(stats.upgraded) + " VRP coordinate(s).\n");
     for (const auto &line : stats.upgraded_log)
         log_line("[xp_swiss_vfr]   " + line + "\n");
 }

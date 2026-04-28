@@ -42,8 +42,8 @@ std::string trim(std::string s)
 // the line (long_name) verbatim — the long_name may contain spaces.
 struct ParsedFix
 {
-    double      lat            = 0.0;
-    double      lon            = 0.0;
+    double      lat = 0.0;
+    double      lon = 0.0;
     std::string ident;
     std::string terminal_area;
     std::string icao_region;
@@ -54,7 +54,7 @@ struct ParsedFix
 
 ParsedFix parse_fix_line(const std::string &line)
 {
-    ParsedFix p;
+    ParsedFix          p;
     std::istringstream stream(line);
     if (!(stream >> p.lat >> p.lon >> p.ident >> p.terminal_area >> p.icao_region >> p.usage_code))
         return p;
@@ -75,7 +75,7 @@ bool navigraph_is_available(const std::filesystem::path &xplane_root)
 }
 
 NavigraphVrpOverrides parse_navigraph_vrps(const std::filesystem::path &earth_fix_path,
-                                            const std::set<std::string>  &icaos)
+                                           const std::set<std::string> &icaos)
 {
     NavigraphVrpOverrides overrides;
     std::ifstream         stream(earth_fix_path);
@@ -98,8 +98,7 @@ NavigraphVrpOverrides parse_navigraph_vrps(const std::filesystem::path &earth_fi
     return overrides;
 }
 
-NavigraphOverrideStats apply_navigraph_overrides(VfrAirportDatabase             &db,
-                                                  const NavigraphVrpOverrides    &overrides)
+NavigraphOverrideStats apply_navigraph_overrides(VfrAirportDatabase &db, const NavigraphVrpOverrides &overrides)
 {
     NavigraphOverrideStats stats;
     for (const auto &[key, coord] : overrides)

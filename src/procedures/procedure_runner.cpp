@@ -2,9 +2,11 @@
 
 #include "core/plugin.hpp"
 #include "procedures/build_procedure.hpp"
+#include "procedures/procedure_state.hpp"
 
 #include <XPLM/XPLMMenus.h>
 #include <XPLM/XPLMNavigation.h>
+#include <XPLM/XPLMPlugin.h>
 #include <XPLM/XPLMUtilities.h>
 
 #include <cstdint>
@@ -31,6 +33,13 @@ enum MenuItem : std::intptr_t
 XPLMMenuID s_menu     = nullptr;
 int        s_root_idx = -1;
 bool       s_active   = false;
+
+ProcedureStateMachine s_state_machine;
+
+// Command refs — registered in init(), unregistered in stop(). The handler
+// dispatches based on the ref pointer.
+XPLMCommandRef s_cmd_activate_lszg_06 = nullptr;
+XPLMCommandRef s_cmd_clear            = nullptr;
 
 // Range of FMS indices we own. [s_inject_first .. s_inject_first + s_inject_count - 1]
 // Set on activate, used on clear so we only remove our own entries and leave any
@@ -85,6 +94,55 @@ void write_entry(int idx, const ProcedureWaypoint &w)
     log_line(buf);
 }
 
+// Write an airport-type entry so the X1000 recognises the entry as a departure
+// (or destination) airport rather than a generic lat/lon point. Without this,
+// the previously-set "LSZG departure" in the X1000's flight-plan metadata is
+// lost as soon as we overwrite slot 0 with a lat/lon-with-id entry.
+//
+// Returns true when the airport navref was found and written; false on lookup
+// failure (caller can then proceed without the airport row).
+bool write_airport_entry(int idx, const std::string &icao)
+{
+    XPLMNavRef ref = XPLMFindNavAid(nullptr, icao.c_str(), nullptr, nullptr, nullptr, xplm_Nav_Airport);
+
+    char buf[256];
+    if (ref == XPLM_NAV_NOT_FOUND)
+    {
+        std::snprintf(buf, sizeof(buf), "[xp_swiss_vfr] FMS inject idx=%d airport=%s ref=NOT_FOUND; skipped.\n", idx,
+                      icao.c_str());
+        log_line(buf);
+        return false;
+    }
+
+    XPLMSetFMSFlightPlanEntryInfo(FPL, idx, ref, /*inAltitude=*/0);
+    std::snprintf(buf, sizeof(buf), "[xp_swiss_vfr] FMS inject idx=%d airport=%s ref=%d\n", idx, icao.c_str(),
+                  static_cast<int>(ref));
+    log_line(buf);
+    return true;
+}
+
+// True when the existing FPL's last entry is an airport with the given ICAO.
+// Used to decide whether we need to prepend the procedure airport: if the
+// pilot already has e.g. `LSZB → … → LSZG` loaded and activates our LSZG
+// procedure, LSZG is already present as destination — appending the pattern
+// after it gives `LSZB → … → LSZG → E → E1 → … → RWY06`, which is exactly
+// what the pilot wants. Without this check we would duplicate LSZG.
+bool last_entry_is_airport_with_icao(int count, const std::string &icao)
+{
+    if (count <= 0)
+        return false;
+
+    XPLMNavType type        = 0;
+    XPLMNavRef  ref         = XPLM_NAV_NOT_FOUND;
+    int         alt         = 0;
+    float       lat         = 0.0F;
+    float       lon         = 0.0F;
+    char        id_back[64] = {};
+
+    XPLMGetFMSFlightPlanEntryInfo(FPL, count - 1, &type, id_back, &ref, &alt, &lat, &lon);
+    return type == xplm_Nav_Airport && icao == id_back;
+}
+
 void log_readback(int idx)
 {
     XPLMNavType type         = 0;
@@ -137,6 +195,22 @@ void menu_handler(void * /*menu_ref*/, void *item_ref)
     }
 }
 
+// X-Plane command handler: invoked when the bound command is fired (e.g. by a
+// keyboard shortcut or joystick button). We act on `xplm_CommandBegin` only,
+// returning 1 to mark the command as fully handled (no further plugins or
+// X-Plane internals run for this command).
+int command_handler(XPLMCommandRef cmd, XPLMCommandPhase phase, void * /*ref*/)
+{
+    if (phase != xplm_CommandBegin)
+        return 1;
+
+    if (cmd == s_cmd_activate_lszg_06)
+        activate_lszg_06_test();
+    else if (cmd == s_cmd_clear)
+        clear_active_procedure();
+    return 1;
+}
+
 } // namespace
 
 void init()
@@ -147,11 +221,30 @@ void init()
     XPLMAppendMenuItem(s_menu, "Activate LSZG RWY 06 (test)", reinterpret_cast<void *>(ITEM_ACTIVATE_LSZG_06), 0);
     XPLMAppendMenuItem(s_menu, "Clear LSZG procedure", reinterpret_cast<void *>(ITEM_CLEAR), 0);
 
-    log_line("[xp_swiss_vfr] procedures::init — menu items registered.\n");
+    // Register X-Plane commands. Pilots can bind these to keyboard or joystick
+    // via Settings → Keyboard / Joystick → search "xp_swiss_vfr".
+    s_cmd_activate_lszg_06 =
+        XPLMCreateCommand("xpswissvfr/activate/lszg/06", "Activate LSZG RWY 06 VFR procedure (test)");
+    s_cmd_clear = XPLMCreateCommand("xpswissvfr/clear", "Clear active VFR procedure");
+    XPLMRegisterCommandHandler(s_cmd_activate_lszg_06, &command_handler, /*inBefore=*/1, nullptr);
+    XPLMRegisterCommandHandler(s_cmd_clear, &command_handler, /*inBefore=*/1, nullptr);
+
+    log_line("[xp_swiss_vfr] procedures::init — menu + commands registered.\n");
 }
 
 void stop()
 {
+    if (s_cmd_activate_lszg_06 != nullptr)
+    {
+        XPLMUnregisterCommandHandler(s_cmd_activate_lszg_06, &command_handler, /*inBefore=*/1, nullptr);
+        s_cmd_activate_lszg_06 = nullptr;
+    }
+    if (s_cmd_clear != nullptr)
+    {
+        XPLMUnregisterCommandHandler(s_cmd_clear, &command_handler, /*inBefore=*/1, nullptr);
+        s_cmd_clear = nullptr;
+    }
+
     if (s_menu != nullptr)
     {
         XPLMDestroyMenu(s_menu);
@@ -163,8 +256,9 @@ void stop()
         s_root_idx = -1;
     }
     s_active = false;
+    s_state_machine.on_clear();
 
-    log_line("[xp_swiss_vfr] procedures::stop — menu torn down.\n");
+    log_line("[xp_swiss_vfr] procedures::stop — menu + commands torn down.\n");
 }
 
 void activate(const Procedure &procedure)
@@ -177,17 +271,27 @@ void activate(const Procedure &procedure)
     int  existing = XPLMCountFMSFlightPlanEntries(FPL);
     int  start    = existing;
     char buf[256];
+
+    // If the FPL already ends with the procedure's airport (e.g. pilot is
+    // flying `LSZB → … → LSZG` and activates the LSZG approach), append the
+    // pattern after it. Otherwise — empty FPL or some other destination —
+    // prepend our own airport entry so the X1000 still anchors on LSZG.
+    const bool airport_already_present = last_entry_is_airport_with_icao(existing, procedure.airport_icao);
+    const bool wrote_airport           = !airport_already_present && write_airport_entry(start, procedure.airport_icao);
+    const int  procedure_offset        = wrote_airport ? 1 : 0;
+
     std::snprintf(buf, sizeof(buf),
-                  "[xp_swiss_vfr] FMS inject: %s RWY %s (%zu waypoints), appending at idx=%d "
+                  "[xp_swiss_vfr] FMS inject: %s RWY %s (%zu waypoints, airport=%s), appending at idx=%d "
                   "(existing FPL has %d entries)\n",
                   procedure.airport_icao.c_str(), procedure.runway_designator.c_str(), procedure.waypoints.size(),
+                  airport_already_present ? "kept-from-existing" : (wrote_airport ? "prepended" : "lookup-failed"),
                   start, existing);
     log_line(buf);
 
     for (std::size_t i = 0; i < procedure.waypoints.size(); ++i)
     {
         const auto &w   = procedure.waypoints[i];
-        int         idx = start + static_cast<int>(i);
+        int         idx = start + procedure_offset + static_cast<int>(i);
 
         write_entry(idx, w);
 
@@ -199,22 +303,25 @@ void activate(const Procedure &procedure)
     }
 
     s_inject_first = start;
-    s_inject_count = static_cast<int>(procedure.waypoints.size());
+    s_inject_count = procedure_offset + static_cast<int>(procedure.waypoints.size());
     s_active       = true;
+    s_state_machine.on_activate();
 
     int total = XPLMCountFMSFlightPlanEntries(FPL);
-    std::snprintf(buf, sizeof(buf), "[xp_swiss_vfr] FMS inject done; range=[%d..%d] total_entries=%d\n", s_inject_first,
-                  s_inject_first + s_inject_count - 1, total);
+    std::snprintf(buf, sizeof(buf), "[xp_swiss_vfr] FMS inject done; range=[%d..%d] total_entries=%d state=%s\n",
+                  s_inject_first, s_inject_first + s_inject_count - 1, total, state_name(s_state_machine.state()));
     log_line(buf);
 }
 
 void clear_active_procedure()
 {
-    log_line("[xp_swiss_vfr] FMS clear: requested via menu.\n");
+    log_line("[xp_swiss_vfr] FMS clear: requested.\n");
     remove_injected_entries("user-clear");
     s_active = false;
+    s_state_machine.on_clear();
 }
 
-bool is_active() { return s_active; }
+bool  is_active() { return s_active; }
+State current_state() { return s_state_machine.state(); }
 
 } // namespace xpswissvfr::procedures

@@ -32,12 +32,11 @@ bool navigraph_is_available(const std::filesystem::path &xplane_root);
 // (airport_icao, vrp_long_name). Errors (missing file, malformed lines) are
 // silently skipped — broken Navigraph data should not break plugin startup.
 NavigraphVrpOverrides parse_navigraph_vrps(const std::filesystem::path &earth_fix_path,
-                                            const std::set<std::string>  &icaos);
+                                           const std::set<std::string> &icaos);
 
 // Apply the overrides to the database. For every (icao, vrp_name) pair in
 // `overrides` that matches a loaded VRP, replace its position. Altitude bands
 // and mandatory_report flag are preserved. Returns stats so the caller can log.
-NavigraphOverrideStats apply_navigraph_overrides(VfrAirportDatabase             &db,
-                                                  const NavigraphVrpOverrides    &overrides);
+NavigraphOverrideStats apply_navigraph_overrides(VfrAirportDatabase &db, const NavigraphVrpOverrides &overrides);
 
 } // namespace xpswissvfr::data

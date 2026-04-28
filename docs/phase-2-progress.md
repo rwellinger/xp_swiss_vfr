@@ -36,13 +36,17 @@
    - Tests: 9 cases against fixture `tests/fixtures/navigraph/earth_fix.dat`. Covers detection true/false, multi-airport filter, multi-word names, missing file, unknown ICAO, unknown VRP name, and the preserve-altitude-bands invariant.
    - **Build/test/lint all green**: 239 assertions / 55 cases; lint exit 0.
 
-### 🔜 Next up (Phase 3)
+### ✅ Phase 3 part 1 (this session)
 
-Procedure state machine, mandatory-reporting hooks, command-bindings (per the original plan).
+12. **`procedures::ProcedureStateMachine`** (`src/procedures/procedure_state.{hpp,cpp}`) — SDK-free, deterministic. States: `IDLE`, `ARMED`, `ACTIVE`, `COMPLETED`. Manual transitions implemented: `on_activate()` → ARMED (from any state, supports re-injection and re-arming after a circuit), `on_clear()` → IDLE. Auto-transitions (`on_first_leg_engaged`, `on_threshold_passed`) are wired in the API but not yet driven from the runner — that comes with the flight-loop callback in part 2. 12 unit tests cover all transitions including no-op cases (clear from IDLE, threshold from ARMED).
+13. **Command-bindings** — `XPLMCreateCommand` for `xpswissvfr/activate/lszg/06` and `xpswissvfr/clear`. Pilots can bind these via X-Plane Settings → Keyboard / Joystick. Single shared `command_handler` dispatches by ref pointer comparison; only `xplm_CommandBegin` triggers (releases / repeats are ignored).
+14. Runner exposes `current_state()` and logs the state at the end of each inject (e.g. `state=ARMED`).
+   - **Build/test/lint all green**: 268 assertions / 67 cases; lint exit 0.
 
-12. **`procedures::ProcedureState`** — IDLE / ARMED / ACTIVE / COMPLETED. Transitions: `activate()` → ARMED; flight-loop detects entry into the procedure airspace → ACTIVE; aircraft passes the last waypoint (RWY threshold) → COMPLETED; `clear()` → IDLE.
-13. **Mandatory-reporting hooks** — flight-loop callback samples aircraft position every N seconds; when within X NM of a `mandatory_report` VRP and not yet reported, fires a `WAYPOINT_REPORTED` event (log-only for now; actual UI/ATC integration is Phase 4 / Phase 7).
-14. **Command-bindings** — `XPLMCreateCommand` for `xpswissvfr/activate_lszg_06`, `xpswissvfr/clear_procedure`. User can bind to keyboard / joystick.
+### 🔜 Phase 3 part 2 (next session — needs in-sim flight validation)
+
+15. **Flight-loop callback** — `XPLMRegisterFlightLoopCallback` polling aircraft position every ~1 sec. Drives `on_first_leg_engaged` (when aircraft enters the first leg's tracking radius) and `on_threshold_passed` (when aircraft crosses the THR position).
+16. **Mandatory-reporting hooks** — same callback, additional logic: when within ~0.3 NM of a `mandatory_report` VRP and not yet reported, fire a `WAYPOINT_REPORTED` event (log-only for now; actual UI/ATC integration is Phase 4 / Phase 7).
 
 ### 🔜 Out of scope for Phase 2/2.5
 
