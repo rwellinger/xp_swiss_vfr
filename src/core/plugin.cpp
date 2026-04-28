@@ -1,5 +1,6 @@
 #include "core/plugin.hpp"
 
+#include "data/navigraph_source.hpp"
 #include "version.hpp"
 
 #include <XPLM/XPLMPlugin.h>
@@ -7,6 +8,7 @@
 
 #include <cstdio>
 #include <filesystem>
+#include <set>
 #include <string>
 
 namespace xpswissvfr::core
@@ -45,6 +47,13 @@ std::filesystem::path resolve_resources_dir()
     return plugin_xpl.parent_path().parent_path() / "resources";
 }
 
+std::filesystem::path resolve_xplane_root()
+{
+    char raw[2048] = {};
+    XPLMGetSystemPath(raw);
+    return std::filesystem::path(to_posix_path(raw));
+}
+
 void log_line(const std::string &line) { XPLMDebugString(line.c_str()); }
 
 std::string join_with_comma(const std::vector<std::string> &items)
@@ -75,6 +84,29 @@ void log_load_result(const data::LoadResult &result, const std::vector<std::stri
              "\n");
 }
 
+// Layer-2: if Navigraph is installed, override Layer-1 VRP coordinates with
+// the precise Navigraph values. Skipped silently if not available — the
+// shipped Layer-1 data must remain functional for users without a subscription.
+void apply_navigraph_overrides_if_available()
+{
+    auto xplane_root = resolve_xplane_root();
+    if (!data::navigraph_is_available(xplane_root))
+    {
+        log_line("[xp_swiss_vfr] Navigraph data not detected; using shipped VRP coordinates.\n");
+        return;
+    }
+
+    const auto                  loaded_codes = s_database.list_icao_codes();
+    const std::set<std::string> icao_set(loaded_codes.begin(), loaded_codes.end());
+    auto overrides = data::parse_navigraph_vrps(xplane_root / "Custom Data" / "earth_fix.dat", icao_set);
+    auto stats     = data::apply_navigraph_overrides(s_database, overrides);
+
+    log_line("[xp_swiss_vfr] Navigraph detected; upgraded " + std::to_string(stats.upgraded) +
+             " VRP coordinate(s).\n");
+    for (const auto &line : stats.upgraded_log)
+        log_line("[xp_swiss_vfr]   " + line + "\n");
+}
+
 } // namespace
 
 void init()
@@ -86,6 +118,8 @@ void init()
     auto airports_dir = resolve_resources_dir() / "airports";
     auto result       = s_database.load_from_directory(airports_dir);
     log_load_result(result, s_database.list_icao_codes());
+
+    apply_navigraph_overrides_if_available();
 }
 
 void stop() { XPLMDebugString("[xp_swiss_vfr] Plugin unloaded.\n"); }

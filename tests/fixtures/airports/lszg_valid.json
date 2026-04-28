@@ -16,7 +16,7 @@
     "06": ["E"],
     "24": ["W"]
   },
-  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 0.7 },
+  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 0.7, "final_distance_nm": 1.0 },
   "frequencies": { "info": "121.235", "ground": "" },
   "metadata": {
     "source": "test fixture",

@@ -4,7 +4,7 @@
   "title": "VFR Airport",
   "description": "Schema for resources/airports/<ICAO>_<name>.json. Informative only — runtime authority is xpswissvfr::data::validate().",
   "type": "object",
-  "required": ["icao", "name", "elevation_ft", "arp", "runways", "approach_sectors", "circuit_pattern"],
+  "required": ["icao", "name", "elevation_ft", "arp", "runways", "vrps", "arrival_routes", "circuit_pattern"],
   "additionalProperties": false,
   "properties": {
     "icao":         { "type": "string", "pattern": "^[A-Z]{4}$" },
@@ -16,10 +16,18 @@
       "minItems": 1,
       "items": { "$ref": "#/$defs/runway" }
     },
-    "approach_sectors": {
+    "vrps": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/approach_sector" }
+      "items": { "$ref": "#/$defs/waypoint" }
+    },
+    "arrival_routes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "type": "string", "minLength": 1 }
+      }
     },
     "circuit_pattern": { "$ref": "#/$defs/circuit_pattern" },
     "frequencies": {
@@ -64,28 +72,14 @@
         "circuit_pattern": { "type": "string", "enum": ["left", "right"] }
       }
     },
-    "approach_sector": {
-      "type": "object",
-      "required": ["id", "name", "entry_point", "joins_circuit_at"],
-      "additionalProperties": false,
-      "properties": {
-        "id":                   { "type": "string", "minLength": 1 },
-        "name":                 { "type": "string", "minLength": 1 },
-        "entry_point":          { "$ref": "#/$defs/waypoint" },
-        "transition_waypoints": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/waypoint" }
-        },
-        "joins_circuit_at":     { "type": "string", "minLength": 1 }
-      }
-    },
     "circuit_pattern": {
       "type": "object",
-      "required": ["altitude_ft_agl", "downwind_offset_nm"],
+      "required": ["altitude_ft_agl", "downwind_offset_nm", "final_distance_nm"],
       "additionalProperties": false,
       "properties": {
         "altitude_ft_agl":    { "type": "integer", "minimum": 0 },
-        "downwind_offset_nm": { "type": "number",  "minimum": 0 }
+        "downwind_offset_nm": { "type": "number",  "exclusiveMinimum": 0 },
+        "final_distance_nm":  { "type": "number",  "exclusiveMinimum": 0 }
       }
     },
     "metadata": {

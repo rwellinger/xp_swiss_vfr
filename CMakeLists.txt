@@ -37,6 +37,7 @@ set(XP_SWISS_VFR_DATA_SOURCES
     src/data/json_loader.cpp
     src/data/validation.cpp
     src/data/vfr_airport_database.cpp
+    src/data/navigraph_source.cpp
 )
 
 # Procedure data is SDK-free and reused by the test target. The runner is

@@ -6,7 +6,6 @@ namespace xpswissvfr::procedures
 {
 namespace
 {
-constexpr double      FAF_DISTANCE_NM      = 1.0;  // along the extended centerline beyond the threshold
 constexpr int         DW_BEG_OFFSET_FT     = 400;  // DW-BEG sits above pattern altitude
 constexpr int         FAF_OFFSET_FT        = -400; // FAF sits below pattern altitude
 constexpr double      METERS_PER_NM        = 1852.0;
@@ -83,14 +82,15 @@ std::optional<Procedure> build_procedure(const data::VfrAirport &airport, const 
     const double half_runway_nm     = (runway->length_m / 2.0) / METERS_PER_NM;
     const double reverse_heading    = runway->heading_true + 180.0;
     const double downwind_offset_nm = airport.circuit_pattern.downwind_offset_nm;
+    const double final_distance_nm  = airport.circuit_pattern.final_distance_nm;
 
     // Landing threshold (half a runway length opposite the runway heading) and
     // take-off threshold (half a runway length along the runway heading).
     const data::Coordinate thr_landing = geometry::offset(airport.arp, reverse_heading, half_runway_nm);
     const data::Coordinate thr_takeoff = geometry::offset(airport.arp, runway->heading_true, half_runway_nm);
 
-    // FAF on the extended centerline, FAF_DISTANCE_NM beyond the landing threshold.
-    const data::Coordinate faf_position = geometry::offset(thr_landing, reverse_heading, FAF_DISTANCE_NM);
+    // FAF on the extended centerline, final_distance_nm beyond the landing threshold.
+    const data::Coordinate faf_position = geometry::offset(thr_landing, reverse_heading, final_distance_nm);
 
     // DW-END abeam FAF on the downwind line: a clean 90° base leg from DW-END
     // to FAF. DW-BEG abeam the take-off threshold on the downwind line: pattern

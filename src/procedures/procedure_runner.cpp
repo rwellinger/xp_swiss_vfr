@@ -80,9 +80,8 @@ void write_entry(int idx, const ProcedureWaypoint &w)
                                           static_cast<float>(w.position.lon), alt, w.display_name.c_str(), id_len);
 
     char buf[256];
-    std::snprintf(buf, sizeof(buf),
-                  "[xp_swiss_vfr] FMS inject idx=%d name=\"%s\" lat=%.6f lon=%.6f alt=%d id_len=%u\n", idx,
-                  w.display_name.c_str(), w.position.lat, w.position.lon, alt, id_len);
+    std::snprintf(buf, sizeof(buf), "[xp_swiss_vfr] FMS inject idx=%d name=\"%s\" lat=%.6f lon=%.6f alt=%d id_len=%u\n",
+                  idx, w.display_name.c_str(), w.position.lat, w.position.lon, alt, id_len);
     log_line(buf);
 }
 

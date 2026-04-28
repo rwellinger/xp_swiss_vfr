@@ -37,7 +37,7 @@ VfrAirport make_valid_airport()
 
     a.arrival_routes["06"] = {"E"};
 
-    a.circuit_pattern = {1000, 0.7};
+    a.circuit_pattern = {1000, 0.7, 1.0};
     return a;
 }
 
@@ -167,4 +167,18 @@ TEST_CASE("arrival_routes rule rejects empty VRP sequence", "[validation]")
     auto a                    = make_valid_airport();
     a.arrival_routes["06"]    = {};
     REQUIRE(any_error_contains(validate(a), "is empty"));
+}
+
+TEST_CASE("circuit_pattern rule rejects non-positive downwind_offset_nm", "[validation]")
+{
+    auto a                                 = make_valid_airport();
+    a.circuit_pattern.downwind_offset_nm   = 0.0;
+    REQUIRE(any_error_contains(validate(a), "downwind_offset_nm"));
+}
+
+TEST_CASE("circuit_pattern rule rejects non-positive final_distance_nm", "[validation]")
+{
+    auto a                              = make_valid_airport();
+    a.circuit_pattern.final_distance_nm = -0.5;
+    REQUIRE(any_error_contains(validate(a), "final_distance_nm"));
 }

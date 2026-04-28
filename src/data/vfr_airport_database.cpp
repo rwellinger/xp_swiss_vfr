@@ -84,6 +84,12 @@ const VfrAirport *VfrAirportDatabase::find(const std::string &icao) const
     return it == airports_.end() ? nullptr : &it->second;
 }
 
+VfrAirport *VfrAirportDatabase::find_mutable(const std::string &icao)
+{
+    auto it = airports_.find(icao);
+    return it == airports_.end() ? nullptr : &it->second;
+}
+
 std::vector<std::string> VfrAirportDatabase::list_icao_codes() const
 {
     std::vector<std::string> codes;

@@ -81,6 +81,15 @@ std::optional<std::string> check_vrp_altitude_bands(const VfrAirport &a)
     return std::nullopt;
 }
 
+std::optional<std::string> check_circuit_pattern_dimensions(const VfrAirport &a)
+{
+    if (a.circuit_pattern.downwind_offset_nm <= 0.0)
+        return "circuit_pattern.downwind_offset_nm must be > 0";
+    if (a.circuit_pattern.final_distance_nm <= 0.0)
+        return "circuit_pattern.final_distance_nm must be > 0";
+    return std::nullopt;
+}
+
 std::optional<std::string> check_arrival_routes_reference_known_vrps(const VfrAirport &a)
 {
     std::set<std::string> known_vrps;
@@ -116,6 +125,7 @@ const std::vector<Validator> &validators()
         check_unique_vrp_names,
         check_runway_headings_in_range,
         check_vrp_altitude_bands,
+        check_circuit_pattern_dimensions,
         check_arrival_routes_reference_known_vrps,
     };
     return rules;

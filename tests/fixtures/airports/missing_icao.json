@@ -9,5 +9,5 @@
     { "name": "E", "lat": 47.1800, "lon": 7.5500, "mandatory_report": true }
   ],
   "arrival_routes": { "06": ["E"] },
-  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 0.7 }
+  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 0.7, "final_distance_nm": 1.0 }
 }

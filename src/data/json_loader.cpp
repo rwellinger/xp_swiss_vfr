@@ -49,6 +49,7 @@ void from_json(const json &j, CircuitPattern &c)
 {
     j.at("altitude_ft_agl").get_to(c.altitude_ft_agl);
     j.at("downwind_offset_nm").get_to(c.downwind_offset_nm);
+    j.at("final_distance_nm").get_to(c.final_distance_nm);
 }
 
 void from_json(const json &j, AirportMetadata &m)

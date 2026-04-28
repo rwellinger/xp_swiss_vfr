@@ -25,17 +25,28 @@
 5. **`build_procedure(VfrAirport, runway_designator) → optional<Procedure>`** (`src/procedures/build_procedure.{hpp,cpp}`) — pure, SDK-free. Reads runway + arrival_route + circuit_pattern from the airport JSON and emits: arrival-route VRPs (verbatim, name truncated to 6 chars) → DW-BEG → DW-END → FAF → THR. Uses `geometry::offset` throughout. Right circuit mirrors the lateral offset (heading + 90 vs heading − 90). Returns `nullopt` on unknown runway, missing arrival route, or arrival route referencing an unknown VRP. 8 test cases in `tests/test_build_procedure.cpp` cover RWY 06 (left), RWY 24 (right, mirror geometry), monotonic altitude step-down, name truncation (`ABM ALTREU` → `ABM AL`), and the three nullopt branches.
 6. **Runner refactor** (`src/procedures/procedure_runner.{hpp,cpp}`) — replaced `inject_test_procedure()` with `activate(const Procedure&)`. Iterates `Procedure::waypoints` instead of a hardcoded array; always writes via `XPLMSetFMSFlightPlanEntryLatLonWithId` (the airport-navref branch — never used by the previous test data — was dropped). Menu callback `activate_lszg_06_test()` resolves `core::airport_database().find("LSZG")`, calls `build_procedure(*lszg, "06")`, and forwards on success; logs and returns on `nullopt` / unknown airport.
 7. **Hardcoded data retired** — deleted `src/procedures/test_procedure.{hpp,cpp}` and `tests/test_procedure_data.cpp`; CMake entries removed.
-   - **Build/test/lint all green**: 184 assertions / 44 cases; lint exit 0.
+8. **Sim verification (RWY 06 right-circuit)** — confirmed in-sim by thWelly: NAV-mode tracking and waypoint sequencing work end-to-end. The X1000's turn-anticipation arcs at DW-END/FAF render as overlapping at 0 KT (parked) but normalize at pattern speed. Aerobask's own MFD renders the polyline cleanly without anticipation. LNM round-trip confirms the geometry itself is correct.
+9. **Pattern direction Q1 resolved** — pilot confirmation: real LSZG flies `06=right`, `24=left`. JSON updated; tests rewritten for the SE-side downwind. Metadata note cites the Aare-bend visual cue.
+10. **Pattern dimensions tuned** — `downwind_offset_nm` 0.7 → 1.0 (real-world standard pattern width), and `final_distance_nm` exposed as JSON field on `circuit_pattern`, set to 1.5 NM for LSZG (3.8° glideslope from FAF). Validation rejects non-positive values for both.
+11. **Phase 2.5 — Navigraph runtime override layer** (`src/data/navigraph_source.{hpp,cpp}`):
+   - `navigraph_is_available(xplane_root)` — detects via `Custom Data/cycle_info.txt`.
+   - `parse_navigraph_vrps(earth_fix.dat, icaos)` — earth_fix.dat 1200 format parser; matches lines with IDENT prefix `VP` and TERMINAL_AREA in the requested ICAO set; handles multi-word LONG_NAMEs (e.g. `ABM ALTREU`).
+   - `apply_navigraph_overrides(database, overrides)` — replaces matching VRP positions; preserves altitude bands and `mandatory_report` flag; returns stats with per-change log.
+   - Wired into `core::init()` after `database.load_from_directory(...)`. Logs are silent if Navigraph is not installed.
+   - Tests: 9 cases against fixture `tests/fixtures/navigraph/earth_fix.dat`. Covers detection true/false, multi-airport filter, multi-word names, missing file, unknown ICAO, unknown VRP name, and the preserve-altitude-bands invariant.
+   - **Build/test/lint all green**: 239 assertions / 55 cases; lint exit 0.
 
-### 🔜 Next up (Phase 2 plan, in order)
+### 🔜 Next up (Phase 3)
 
-8. **Sim verification** — `make install`, restart X-Plane, activate "Activate LSZG RWY 06 (test)". Compare X1000 FPL page against the reference (`fms2.jpg` from milestone 1.5). Should be visually identical for RWY 06 (with the Layer-1 coordinate approximations + the slightly different geometry that comes from the formula instead of the hand-tuned constants — DW-BEG/DW-END will sit a few hundred metres differently).
-9. **Multi-runway** — extend the menu with `Activate LSZG RWY 24`. Trivial: one extra menu item, one extra `MenuItem` enum value, one extra dispatch case calling `build_procedure(*lszg, "24")`.
-10. **Navigraph runtime override layer** (`src/data/navigraph_source.{hpp,cpp}`):
-   - `bool is_available()` — checks `~/X-Plane 12/Custom Data/cycle_info.txt`.
-   - `parse VP-lines from earth_fix.dat` for given ICAO list, return `map<vrp_name, Coordinate>`.
-   - `apply_overrides(VfrAirportDatabase&)` — overwrites coords for matching ICAO+VRP-name pairs; logs which VRPs were upgraded.
-   - Wired into `core::init()` after `database.load_from_directory(...)`.
+Procedure state machine, mandatory-reporting hooks, command-bindings (per the original plan).
+
+12. **`procedures::ProcedureState`** — IDLE / ARMED / ACTIVE / COMPLETED. Transitions: `activate()` → ARMED; flight-loop detects entry into the procedure airspace → ACTIVE; aircraft passes the last waypoint (RWY threshold) → COMPLETED; `clear()` → IDLE.
+13. **Mandatory-reporting hooks** — flight-loop callback samples aircraft position every N seconds; when within X NM of a `mandatory_report` VRP and not yet reported, fires a `WAYPOINT_REPORTED` event (log-only for now; actual UI/ATC integration is Phase 4 / Phase 7).
+14. **Command-bindings** — `XPLMCreateCommand` for `xpswissvfr/activate_lszg_06`, `xpswissvfr/clear_procedure`. User can bind to keyboard / joystick.
+
+### 🔜 Out of scope for Phase 2/2.5
+
+15. **Multi-runway menu** — add `Activate LSZG RWY 24`. Trivial; deferred to Phase 4 (where ImGui handles airport/runway selection properly).
 
 ---
 
@@ -43,7 +54,7 @@
 
 | # | Item | Where | Resolution |
 |---|---|---|---|
-| 1 | **Pattern-direction for 06 / 24** | `LSZG_grenchen.json` currently has `06: left, 24: right` (provisional, copied from pre-migration value). xp_welly_atc had it reversed (translated: `06: right, 24: left`). Need pilot confirmation. | Ask thWelly explicitly when next session resumes. |
+| 1 | ~~**Pattern-direction for 06 / 24**~~ | ~~`LSZG_grenchen.json` currently has `06: left, 24: right` (provisional)~~ | ✅ **Resolved 2026-04-28**: thWelly confirmed from on-site observation: real-world LSZG flies **06=right, 24=left**. Traffic turns right onto downwind on the SE side over the Aare bend. JSON updated. |
 | 2 | **VRP coordinates** | All 7 VRPs in `LSZG_grenchen.json` are author approximations. Real values must be verified against the Skyguide VAC LSZG. | Either resolved by Layer-2 override (if pilot uses Navigraph) or by hand from VAC. Mark JSON `metadata.notes` reflects the status. |
 | 3 | **arrival_routes for 06 / 24** | Currently set to `06: [E, E1]` and `24: [W, HW]` — plausibility, not from VAC. | Verify against VAC. |
 | 4 | **In-flight leg progression (H6 from milestone 1.5)** | Map rendering is confirmed; AP NAV-mode tracking and leg auto-switch through the pattern not yet flown. | Test in sim during Phase 2 step 7. |

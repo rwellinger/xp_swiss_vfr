@@ -28,8 +28,8 @@ VfrAirport make_lszg_airport()
     a.elevation_ft = 1411;
     a.arp          = {47.1816, 7.4172};
     a.runways      = {
-        {"06", 60.0, 1200, "asphalt", "left"},
-        {"24", 240.0, 1200, "asphalt", "right"},
+        {"06", 60.0, 1200, "asphalt", "right"},
+        {"24", 240.0, 1200, "asphalt", "left"},
     };
     auto vrp = [](std::string name, double lat, double lon) {
         Waypoint w;
@@ -49,7 +49,7 @@ VfrAirport make_lszg_airport()
         {"06", {"E", "E1"}},
         {"24", {"W", "HW"}},
     };
-    a.circuit_pattern = CircuitPattern{1000, 0.7};
+    a.circuit_pattern = CircuitPattern{1000, 1.0, 1.5};
     return a;
 }
 
@@ -104,7 +104,7 @@ TEST_CASE("build_procedure LSZG RWY 06: VRPs prepended verbatim", "[build_proced
     REQUIRE(*p->waypoints[1].altitude_ft == 3000);
 }
 
-TEST_CASE("build_procedure LSZG RWY 06: pattern geometry (left circuit)", "[build_procedure]")
+TEST_CASE("build_procedure LSZG RWY 06: pattern geometry (right circuit)", "[build_procedure]")
 {
     auto p = build_procedure(make_lszg_airport(), "06");
     REQUIRE(p.has_value());
@@ -114,27 +114,30 @@ TEST_CASE("build_procedure LSZG RWY 06: pattern geometry (left circuit)", "[buil
     const auto &faf    = p->waypoints[4];
     const auto &thr    = p->waypoints[5];
 
-    SECTION("DW-BEG sits abeam the take-off threshold on the offset downwind line")
+    // Right circuit on RWY 06: downwind sits SE of the runway (over the Aare),
+    // not NW. DW-BEG is abeam the take-off threshold (NE end), DW-END is
+    // abeam FAF (SW end).
+    SECTION("DW-BEG sits abeam the take-off threshold on the SE downwind line")
     {
         REQUIRE(dw_beg.display_name == "DW-BEG");
-        REQUIRE(dw_beg.position.lat == Catch::Approx(47.1944).margin(POSITION_TOL));
-        REQUIRE(dw_beg.position.lon == Catch::Approx(7.4155).margin(POSITION_TOL));
+        REQUIRE(dw_beg.position.lat == Catch::Approx(47.1699).margin(POSITION_TOL));
+        REQUIRE(dw_beg.position.lon == Catch::Approx(7.4363).margin(POSITION_TOL));
         REQUIRE(*dw_beg.altitude_ft == LSZG_PATTERN_ALT_FT + 400);
     }
 
-    SECTION("DW-END sits abeam FAF on the offset downwind line")
+    SECTION("DW-END sits abeam FAF on the SE downwind line")
     {
         REQUIRE(dw_end.display_name == "DW-END");
-        REQUIRE(dw_end.position.lat == Catch::Approx(47.1807).margin(POSITION_TOL));
-        REQUIRE(dw_end.position.lon == Catch::Approx(7.3805).margin(POSITION_TOL));
+        REQUIRE(dw_end.position.lat == Catch::Approx(47.1520).margin(POSITION_TOL));
+        REQUIRE(dw_end.position.lon == Catch::Approx(7.3907).margin(POSITION_TOL));
         REQUIRE(*dw_end.altitude_ft == LSZG_PATTERN_ALT_FT);
     }
 
-    SECTION("FAF sits 1 NM SW of THR on the extended centerline")
+    SECTION("FAF sits final_distance_nm SW of THR on the extended centerline")
     {
         REQUIRE(faf.display_name == "FAF");
-        REQUIRE(faf.position.lat == Catch::Approx(47.1706).margin(POSITION_TOL));
-        REQUIRE(faf.position.lon == Catch::Approx(7.3891).margin(POSITION_TOL));
+        REQUIRE(faf.position.lat == Catch::Approx(47.1664).margin(POSITION_TOL));
+        REQUIRE(faf.position.lon == Catch::Approx(7.3785).margin(POSITION_TOL));
         REQUIRE(*faf.altitude_ft == LSZG_PATTERN_ALT_FT - 400);
     }
 
@@ -184,7 +187,7 @@ TEST_CASE("build_procedure LSZG RWY 06: every leg is parallel or perpendicular t
     }
 }
 
-TEST_CASE("build_procedure LSZG RWY 24: pattern is mirrored (right circuit)", "[build_procedure]")
+TEST_CASE("build_procedure LSZG RWY 24: pattern is mirrored (left circuit)", "[build_procedure]")
 {
     auto p = build_procedure(make_lszg_airport(), "24");
     REQUIRE(p.has_value());
@@ -194,25 +197,25 @@ TEST_CASE("build_procedure LSZG RWY 24: pattern is mirrored (right circuit)", "[
     REQUIRE(p->waypoints[0].display_name == "W");
     REQUIRE(p->waypoints[1].display_name == "HW");
 
-    // Right circuit on RWY 24 (heading 240°) puts the downwind on the same
-    // physical NW-of-runway airspace as RWY 06's left circuit, but the aircraft
-    // flies it in the opposite direction. So DW-BEG sits abeam THR 24 (= the
-    // NE end, take-off threshold for RWY 24) and DW-END sits abeam FAF 24
-    // (= NE of the field, on the extended centerline of RWY 24's approach).
+    // Left circuit on RWY 24 puts the downwind on the same physical SE-of-
+    // runway airspace as RWY 06's right circuit, but the aircraft flies it
+    // in the opposite direction. So DW-BEG sits abeam THR 24's take-off end
+    // (= SW of the field, the RWY 06 landing threshold position) and DW-END
+    // sits abeam FAF 24 (= NE of the field, on the extended centerline).
     const auto &dw_beg = p->waypoints[2];
     const auto &dw_end = p->waypoints[3];
     REQUIRE(dw_beg.display_name == "DW-BEG");
-    REQUIRE(dw_beg.position.lat == Catch::Approx(47.1890).margin(POSITION_TOL));
-    REQUIRE(dw_beg.position.lon == Catch::Approx(7.4017).margin(POSITION_TOL));
+    REQUIRE(dw_beg.position.lat == Catch::Approx(47.1645).margin(POSITION_TOL));
+    REQUIRE(dw_beg.position.lon == Catch::Approx(7.4226).margin(POSITION_TOL));
     REQUIRE(dw_end.display_name == "DW-END");
-    REQUIRE(dw_end.position.lat == Catch::Approx(47.2027).margin(POSITION_TOL));
-    REQUIRE(dw_end.position.lon == Catch::Approx(7.4367).margin(POSITION_TOL));
+    REQUIRE(dw_end.position.lat == Catch::Approx(47.1824).margin(POSITION_TOL));
+    REQUIRE(dw_end.position.lon == Catch::Approx(7.4682).margin(POSITION_TOL));
 
     const auto &faf = p->waypoints[4];
     const auto &thr = p->waypoints[5];
     REQUIRE(faf.display_name == "FAF");
-    REQUIRE(faf.position.lat == Catch::Approx(47.1926).margin(POSITION_TOL));
-    REQUIRE(faf.position.lon == Catch::Approx(7.4453).margin(POSITION_TOL));
+    REQUIRE(faf.position.lat == Catch::Approx(47.1968).margin(POSITION_TOL));
+    REQUIRE(faf.position.lon == Catch::Approx(7.4559).margin(POSITION_TOL));
     REQUIRE(thr.display_name == "RWY24");
     REQUIRE(thr.position.lat == Catch::Approx(47.1843).margin(POSITION_TOL));
     REQUIRE(thr.position.lon == Catch::Approx(7.4241).margin(POSITION_TOL));

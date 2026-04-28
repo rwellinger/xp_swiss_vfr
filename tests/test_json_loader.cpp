@@ -72,6 +72,7 @@ TEST_CASE("parse_airport populates every field of the valid LSZG fixture", "[jso
     {
         REQUIRE(airport.circuit_pattern.altitude_ft_agl == 1000);
         REQUIRE(airport.circuit_pattern.downwind_offset_nm == Catch::Approx(0.7));
+        REQUIRE(airport.circuit_pattern.final_distance_nm == Catch::Approx(1.0));
         REQUIRE(airport.frequencies.at("info") == "121.235");
         REQUIRE(airport.metadata.last_updated == "2026-04-28");
         REQUIRE(airport.metadata.verified_by == "tests");
