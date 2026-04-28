@@ -1,0 +1,5 @@
+{
+  "icao": "LSZG",
+  "name": "Grenchen",
+  // intentionally broken: trailing comma + comments are not valid JSON
+  "elevation_ft": 1411,

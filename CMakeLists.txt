@@ -31,9 +31,32 @@ include_directories(
 )
 
 # ── Plugin target ─────────────────────────────────────────────────────────────
+# Domain logic that is reused by the test target — kept in a variable so the
+# tests can link the same translation units without pulling in the SDK.
+set(XP_SWISS_VFR_DATA_SOURCES
+    src/data/json_loader.cpp
+    src/data/validation.cpp
+    src/data/vfr_airport_database.cpp
+)
+
+# Procedure data is SDK-free and reused by the test target. The runner is
+# SDK-coupled (XPLM menus + FMS API) and only compiled into the plugin.
+set(XP_SWISS_VFR_PROCEDURE_DATA_SOURCES
+    src/procedures/build_procedure.cpp
+)
+
+# Geometry helpers (lat/lon math) are SDK-free and reused by the test target.
+set(XP_SWISS_VFR_GEOMETRY_SOURCES
+    src/geometry/coordinate_math.cpp
+)
+
 add_library(xp_swiss_vfr MODULE
     src/main.cpp
     src/core/plugin.cpp
+    src/procedures/procedure_runner.cpp
+    ${XP_SWISS_VFR_DATA_SOURCES}
+    ${XP_SWISS_VFR_PROCEDURE_DATA_SOURCES}
+    ${XP_SWISS_VFR_GEOMETRY_SOURCES}
 )
 
 target_include_directories(xp_swiss_vfr PRIVATE src)
@@ -49,7 +72,7 @@ if(APPLE)
     target_compile_definitions(xp_swiss_vfr PRIVATE
         APL=1 IBM=0 LIN=0
         XPLM200=1 XPLM210=1 XPLM300=1 XPLM301=1 XPLM302=1 XPLM303=1
-        XPLM400=1
+        XPLM400=1 XPLM410=1
         GL_SILENCE_DEPRECATION
         XP_SWISS_VFR_VERSION="${XP_SWISS_VFR_VERSION}"
     )
@@ -67,7 +90,7 @@ elseif(UNIX)
     target_compile_definitions(xp_swiss_vfr PRIVATE
         APL=0 IBM=0 LIN=1
         XPLM200=1 XPLM210=1 XPLM300=1 XPLM301=1 XPLM302=1 XPLM303=1
-        XPLM400=1
+        XPLM400=1 XPLM410=1
         XP_SWISS_VFR_VERSION="${XP_SWISS_VFR_VERSION}"
     )
     target_compile_options(xp_swiss_vfr PRIVATE
@@ -81,7 +104,7 @@ elseif(WIN32)
     target_compile_definitions(xp_swiss_vfr PRIVATE
         APL=0 IBM=1 LIN=0
         XPLM200=1 XPLM210=1 XPLM300=1 XPLM301=1 XPLM302=1 XPLM303=1
-        XPLM400=1
+        XPLM400=1 XPLM410=1
         WIN32_LEAN_AND_MEAN NOMINMAX
         _CRT_SECURE_NO_WARNINGS
         _USE_MATH_DEFINES

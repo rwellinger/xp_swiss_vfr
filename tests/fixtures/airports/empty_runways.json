@@ -1,0 +1,12 @@
+{
+  "icao": "LSZG",
+  "name": "Grenchen",
+  "elevation_ft": 1411,
+  "arp": { "lat": 47.1816, "lon": 7.4172 },
+  "runways": [],
+  "vrps": [
+    { "name": "E", "lat": 47.1800, "lon": 7.5500, "mandatory_report": true }
+  ],
+  "arrival_routes": {},
+  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 0.7 }
+}

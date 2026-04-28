@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thWelly/xp_swiss_vfr/schemas/vfr_airport.schema.json",
+  "title": "VFR Airport",
+  "description": "Schema for resources/airports/<ICAO>_<name>.json. Informative only — runtime authority is xpswissvfr::data::validate().",
+  "type": "object",
+  "required": ["icao", "name", "elevation_ft", "arp", "runways", "approach_sectors", "circuit_pattern"],
+  "additionalProperties": false,
+  "properties": {
+    "icao":         { "type": "string", "pattern": "^[A-Z]{4}$" },
+    "name":         { "type": "string", "minLength": 1 },
+    "elevation_ft": { "type": "integer" },
+    "arp":          { "$ref": "#/$defs/coordinate" },
+    "runways": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/runway" }
+    },
+    "approach_sectors": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/approach_sector" }
+    },
+    "circuit_pattern": { "$ref": "#/$defs/circuit_pattern" },
+    "frequencies": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "metadata": { "$ref": "#/$defs/metadata" }
+  },
+  "$defs": {
+    "coordinate": {
+      "type": "object",
+      "required": ["lat", "lon"],
+      "additionalProperties": false,
+      "properties": {
+        "lat": { "type": "number", "minimum": -90,  "maximum":  90 },
+        "lon": { "type": "number", "minimum": -180, "maximum": 180 }
+      }
+    },
+    "waypoint": {
+      "type": "object",
+      "required": ["name", "lat", "lon"],
+      "additionalProperties": false,
+      "properties": {
+        "name":             { "type": "string", "minLength": 1 },
+        "lat":              { "type": "number", "minimum": -90,  "maximum":  90 },
+        "lon":              { "type": "number", "minimum": -180, "maximum": 180 },
+        "altitude_ft":      { "type": "integer" },
+        "altitude_ft_min":  { "type": "integer" },
+        "altitude_ft_max":  { "type": "integer" },
+        "mandatory_report": { "type": "boolean" }
+      }
+    },
+    "runway": {
+      "type": "object",
+      "required": ["designator", "heading_true", "length_m", "surface", "circuit_pattern"],
+      "additionalProperties": false,
+      "properties": {
+        "designator":      { "type": "string", "minLength": 1 },
+        "heading_true":    { "type": "number", "minimum": 0, "exclusiveMaximum": 360 },
+        "length_m":        { "type": "integer", "minimum": 1 },
+        "surface":         { "type": "string", "enum": ["asphalt", "concrete", "grass", "gravel"] },
+        "circuit_pattern": { "type": "string", "enum": ["left", "right"] }
+      }
+    },
+    "approach_sector": {
+      "type": "object",
+      "required": ["id", "name", "entry_point", "joins_circuit_at"],
+      "additionalProperties": false,
+      "properties": {
+        "id":                   { "type": "string", "minLength": 1 },
+        "name":                 { "type": "string", "minLength": 1 },
+        "entry_point":          { "$ref": "#/$defs/waypoint" },
+        "transition_waypoints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/waypoint" }
+        },
+        "joins_circuit_at":     { "type": "string", "minLength": 1 }
+      }
+    },
+    "circuit_pattern": {
+      "type": "object",
+      "required": ["altitude_ft_agl", "downwind_offset_nm"],
+      "additionalProperties": false,
+      "properties": {
+        "altitude_ft_agl":    { "type": "integer", "minimum": 0 },
+        "downwind_offset_nm": { "type": "number",  "minimum": 0 }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source":       { "type": "string" },
+        "last_updated": { "type": "string", "format": "date" },
+        "verified_by":  { "type": "string" },
+        "notes":        { "type": "string" }
+      }
+    }
+  }
+}

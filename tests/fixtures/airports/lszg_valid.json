@@ -1,0 +1,27 @@
+{
+  "icao": "LSZG",
+  "name": "Grenchen",
+  "elevation_ft": 1411,
+  "arp": { "lat": 47.1816, "lon": 7.4172 },
+  "runways": [
+    { "designator": "06", "heading_true": 60.0,  "length_m": 1200, "surface": "asphalt", "circuit_pattern": "left" },
+    { "designator": "24", "heading_true": 240.0, "length_m": 1200, "surface": "asphalt", "circuit_pattern": "right" }
+  ],
+  "vrps": [
+    { "name": "E", "lat": 47.1800, "lon": 7.5500, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true },
+    { "name": "W", "lat": 47.1300, "lon": 7.2300, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true },
+    { "name": "S", "lat": 47.1200, "lon": 7.5100, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true }
+  ],
+  "arrival_routes": {
+    "06": ["E"],
+    "24": ["W"]
+  },
+  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 0.7 },
+  "frequencies": { "info": "121.235", "ground": "" },
+  "metadata": {
+    "source": "test fixture",
+    "last_updated": "2026-04-28",
+    "verified_by": "tests",
+    "notes": "fixture only — not authoritative"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "icao": "LSZG",
+  "name": "Grenchen",
+  "elevation_ft": 1411,
+  "arp": { "lat": 47.1816, "lon": 7.4172 },
+  "runways": [
+    { "designator": "06", "heading_true": 60.0,  "length_m": 1200, "surface": "asphalt", "circuit_pattern": "left" },
+    { "designator": "24", "heading_true": 240.0, "length_m": 1200, "surface": "asphalt", "circuit_pattern": "right" }
+  ],
+  "vrps": [
+    { "name": "E",          "lat": 47.1800, "lon": 7.5500, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true  },
+    { "name": "E1",         "lat": 47.1900, "lon": 7.4800, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": false },
+    { "name": "HE",         "lat": 47.2100, "lon": 7.4800, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": false },
+    { "name": "HW",         "lat": 47.1700, "lon": 7.3700, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": false },
+    { "name": "W",          "lat": 47.1300, "lon": 7.2300, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true  },
+    { "name": "S",          "lat": 47.1200, "lon": 7.5100, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true  },
+    { "name": "ABM ALTREU", "lat": 47.1860, "lon": 7.4490, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": false }
+  ],
+  "arrival_routes": {
+    "06": ["E", "E1"],
+    "24": ["W", "HW"]
+  },
+  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 0.7 },
+  "frequencies": { "info": "121.235", "ground": "" },
+  "metadata": {
+    "source": "Skyguide AIP / VAC LSZG (VRP names confirmed from public AIP); coordinates are plugin-author approximations",
+    "last_updated": "2026-04-28",
+    "verified_by": "thWelly",
+    "notes": "VRP names (E, E1, HE, HW, W, S, ABM ALTREU) are taken from the published Swiss AIP and are real-world facts. Coordinates here are plugin-author approximations and MUST be cross-checked against the current Skyguide VAC LSZG before merge — they are NOT copied from any commercial source. When the user has a Navigraph subscription installed (Custom Data/cycle_info.txt present), the optional NavigraphSource layer overrides these coordinates at runtime with more precise values; Navigraph data never enters this repository. Pattern-direction values (06=left, 24=right) need pilot verification — provisional. Arrival routes are plausibility-based suggestions and need VAC verification."
+  }
+}
