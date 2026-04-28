@@ -54,6 +54,12 @@ double s_last_frame_time = 0.0;
 std::vector<data::NearbyAirport>      s_nearby_cache;
 std::chrono::steady_clock::time_point s_nearby_last_refresh{};
 
+// ICAO of the airport whose detail section is currently rendered. Sticky:
+// once the pilot picks one it stays selected even when a closer airport
+// arrives in the list. Falls back to the nearest airport when the selection
+// drops out of range. Empty = auto-pick the nearest.
+std::string s_selected_icao;
+
 // Lazy DataRefs for aircraft position + sim time. Resolved on first use; held
 // for the plugin's lifetime.
 XPLMDataRef s_dr_lat  = nullptr;
@@ -123,7 +129,7 @@ void draw_warning_banner()
 
 void log_line(const std::string &line) { XPLMDebugString(line.c_str()); }
 
-void activate_runway(const data::NearbyAirport &row, const std::string &runway)
+void activate_option(const data::NearbyAirport &row, const data::ArrivalOption &option)
 {
     const data::VfrAirport *airport = core::airport_database().find(row.icao);
     if (airport == nullptr)
@@ -132,14 +138,29 @@ void activate_runway(const data::NearbyAirport &row, const std::string &runway)
         return;
     }
 
-    auto procedure = procedures::build_procedure(*airport, runway);
+    auto procedure = procedures::build_procedure(*airport, option.runway_designator, option.route_label);
     if (!procedure.has_value())
     {
-        log_line("[xp_swiss_vfr] UI activate: build_procedure(" + row.icao + ", " + runway + ") returned nullopt.\n");
+        log_line("[xp_swiss_vfr] UI activate: build_procedure(" + row.icao + ", " + option.runway_designator + ", '" +
+                 option.route_label + "') returned nullopt.\n");
         return;
     }
 
     procedures::activate(*procedure);
+}
+
+// Count how many routes a runway has in the option list. Used to decide
+// whether the activate button label needs the route label appended (when
+// multiple routes exist) or whether "RWY 06" alone is enough.
+std::size_t routes_for_runway(const std::vector<data::ArrivalOption> &options, const std::string &runway)
+{
+    std::size_t count = 0;
+    for (const auto &o : options)
+    {
+        if (o.runway_designator == runway)
+            ++count;
+    }
+    return count;
 }
 
 ImVec4 state_color(procedures::State state)
@@ -177,7 +198,11 @@ void draw_active_procedure_section()
     ImGui::TextUnformatted("ACTIVE PROCEDURE");
     ImGui::PopStyleColor();
 
-    ImGui::Text("%s   RWY %s", info->airport_icao.c_str(), info->runway_designator.c_str());
+    if (info->route_label.empty())
+        ImGui::Text("%s   RWY %s", info->airport_icao.c_str(), info->runway_designator.c_str());
+    else
+        ImGui::Text("%s   RWY %s / %s", info->airport_icao.c_str(), info->runway_designator.c_str(),
+                    info->route_label.c_str());
     ImGui::SameLine();
     ImGui::TextUnformatted("   ");
     ImGui::SameLine();
@@ -211,51 +236,44 @@ void refresh_nearby_if_due(const data::Coordinate &aircraft)
     }
 }
 
-void draw_runway_buttons(const data::NearbyAirport &row)
+// Resolve the currently-selected airport against the live nearby cache. If
+// the sticky selection is missing (first frame) or has fallen out of range,
+// auto-pick the nearest airport. Returns nullptr when the cache is empty.
+const data::NearbyAirport *resolve_selected_airport()
 {
-    if (row.available_runways.empty())
+    if (s_nearby_cache.empty())
+        return nullptr;
+
+    if (!s_selected_icao.empty())
     {
-        ImGui::TextDisabled("(no published runways)");
-        return;
+        for (const auto &row : s_nearby_cache)
+        {
+            if (row.icao == s_selected_icao)
+                return &row;
+        }
     }
 
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 4));
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20F, 0.35F, 0.55F, 1.0F));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30F, 0.50F, 0.75F, 1.0F));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.40F, 0.60F, 0.85F, 1.0F));
-
-    for (std::size_t i = 0; i < row.available_runways.size(); ++i)
-    {
-        const auto &rwy = row.available_runways[i];
-        char        label[64];
-        std::snprintf(label, sizeof(label), "RWY %s##%s_%zu", rwy.c_str(), row.icao.c_str(), i);
-        if (ImGui::Button(label))
-        {
-            activate_runway(row, rwy);
-        }
-        // Optional tooltip from the airport JSON's runway_notes — only shown
-        // when the data file ships a description for this runway.
-        if (ImGui::IsItemHovered())
-        {
-            auto it = row.runway_notes.find(rwy);
-            if (it != row.runway_notes.end() && !it->second.empty())
-            {
-                ImGui::BeginTooltip();
-                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24.0F);
-                ImGui::TextUnformatted(it->second.c_str());
-                ImGui::PopTextWrapPos();
-                ImGui::EndTooltip();
-            }
-        }
-        if (i + 1 < row.available_runways.size())
-            ImGui::SameLine();
-    }
-
-    ImGui::PopStyleColor(3);
-    ImGui::PopStyleVar();
+    s_selected_icao = s_nearby_cache.front().icao;
+    return &s_nearby_cache.front();
 }
 
-void draw_nearby_table()
+void draw_airport_picker_row(const data::NearbyAirport &row, bool is_selected)
+{
+    char label[160];
+    std::snprintf(label, sizeof(label), "%-4s  %-26s%5.1f NM##pick_%s", row.icao.c_str(),
+                  row.name.substr(0, 26).c_str(), row.distance_nm, row.icao.c_str());
+
+    if (is_selected)
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 1.0F, 0.6F, 1.0F));
+
+    if (ImGui::Selectable(label, is_selected))
+        s_selected_icao = row.icao;
+
+    if (is_selected)
+        ImGui::PopStyleColor();
+}
+
+void draw_airport_picker()
 {
     if (s_nearby_cache.empty())
     {
@@ -264,42 +282,87 @@ void draw_nearby_table()
         return;
     }
 
-    constexpr ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
-                                            ImGuiTableFlags_PadOuterX | ImGuiTableFlags_SizingFixedFit;
+    // Cap the picker height so a long list scrolls instead of pushing the
+    // detail section off-screen. ~6 rows visible at default ImGui font size.
+    const float row_height        = ImGui::GetTextLineHeightWithSpacing();
+    const float row_count_f       = static_cast<float>(s_nearby_cache.size());
+    const float max_picker_height = std::min(row_height * 6.0F + 8.0F, row_height * row_count_f + 8.0F);
 
-    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8, 6));
-    if (ImGui::BeginTable("nearby_table", 4, table_flags))
+    ImGui::BeginChild("airport_picker", ImVec2(0, max_picker_height), true);
+    for (const auto &row : s_nearby_cache)
+        draw_airport_picker_row(row, row.icao == s_selected_icao);
+    ImGui::EndChild();
+}
+
+void draw_route_button(const data::NearbyAirport &row, const data::ArrivalOption &option, std::size_t index)
+{
+    const bool multiple = routes_for_runway(row.options, option.runway_designator) > 1;
+
+    char label[128];
+    if (multiple)
+        std::snprintf(label, sizeof(label), "RWY %s / %s##%s_%zu", option.runway_designator.c_str(),
+                      option.route_label.c_str(), row.icao.c_str(), index);
+    else
+        std::snprintf(label, sizeof(label), "RWY %s##%s_%zu", option.runway_designator.c_str(), row.icao.c_str(),
+                      index);
+
+    const float button_width = ImGui::GetContentRegionAvail().x;
+    if (ImGui::Button(label, ImVec2(button_width, 0)))
+        activate_option(row, option);
+
+    if (ImGui::IsItemHovered())
     {
-        // No HeadersRow — the column titles look sortable but the table is
-        // intentionally not sortable (rows are always nearest-first). Sortable
-        // headers in ImGui require ImGuiTableFlags_Sortable + per-frame
-        // SortSpecs handling, which buys nothing for a single-airport list.
-        ImGui::TableSetupColumn("ICAO", ImGuiTableColumnFlags_WidthFixed, 60.0F);
-        ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Dist", ImGuiTableColumnFlags_WidthFixed, 70.0F);
-        ImGui::TableSetupColumn("Runways", ImGuiTableColumnFlags_WidthFixed, 220.0F);
-
-        for (const auto &row : s_nearby_cache)
+        auto it = row.runway_notes.find(option.runway_designator);
+        if (it != row.runway_notes.end() && !it->second.empty())
         {
-            ImGui::TableNextRow();
-
-            ImGui::TableSetColumnIndex(0);
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 1.0F, 0.6F, 1.0F));
-            ImGui::TextUnformatted(row.icao.c_str());
-            ImGui::PopStyleColor();
-
-            ImGui::TableSetColumnIndex(1);
-            ImGui::TextUnformatted(row.name.c_str());
-
-            ImGui::TableSetColumnIndex(2);
-            ImGui::Text("%5.1f NM", row.distance_nm);
-
-            ImGui::TableSetColumnIndex(3);
-            draw_runway_buttons(row);
+            ImGui::BeginTooltip();
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24.0F);
+            ImGui::TextUnformatted(it->second.c_str());
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
         }
-        ImGui::EndTable();
     }
+}
+
+void draw_selected_airport_detail(const data::NearbyAirport &row)
+{
+    // Header line — ICAO highlighted, name + distance to the right.
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 1.0F, 0.6F, 1.0F));
+    ImGui::TextUnformatted(row.icao.c_str());
+    ImGui::PopStyleColor();
+    ImGui::SameLine(70.0F);
+    ImGui::Text("%s   (%.1f NM)", row.name.c_str(), row.distance_nm);
+
+    ImGui::Spacing();
+
+    if (row.options.empty())
+    {
+        ImGui::TextDisabled("(no published routes)");
+        return;
+    }
+
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 4));
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20F, 0.35F, 0.55F, 1.0F));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30F, 0.50F, 0.75F, 1.0F));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.40F, 0.60F, 0.85F, 1.0F));
+
+    for (std::size_t i = 0; i < row.options.size(); ++i)
+        draw_route_button(row, row.options[i], i);
+
+    ImGui::PopStyleColor(3);
     ImGui::PopStyleVar();
+}
+
+void draw_nearby_table()
+{
+    draw_airport_picker();
+
+    const data::NearbyAirport *selected = resolve_selected_airport();
+    if (selected == nullptr)
+        return;
+
+    ImGui::Spacing();
+    draw_selected_airport_detail(*selected);
 }
 
 void draw_position_footer(const data::Coordinate &aircraft)
@@ -317,7 +380,7 @@ void draw_main_window()
     ImGui::SetNextWindowSize(ImVec2(DEFAULT_WIDTH, DEFAULT_HEIGHT), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(560, 360), ImVec2(1600, 1200));
 
-    static const std::string title = std::string("xp_swiss_vfr - Procedure Selector##main");
+    static const std::string title = std::string("Swiss VFR Patterns##main");
     if (ImGui::Begin(title.c_str(), &open, ImGuiWindowFlags_NoCollapse))
     {
         draw_warning_banner();
@@ -553,6 +616,7 @@ void stop()
     ImGui::DestroyContext();
 
     s_nearby_cache.clear();
+    s_selected_icao.clear();
     s_visible = false;
 
     XPLMDebugString("[xp_swiss_vfr] ui::stop — ImGui torn down.\n");

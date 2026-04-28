@@ -9,13 +9,15 @@ namespace xpswissvfr::data
 namespace
 {
 
-std::vector<std::string> available_runways(const VfrAirport &airport)
+std::vector<ArrivalOption> available_options(const VfrAirport &airport)
 {
-    std::vector<std::string> runways;
-    runways.reserve(airport.arrival_routes.size());
-    for (const auto &[designator, _route] : airport.arrival_routes)
-        runways.push_back(designator);
-    return runways;
+    std::vector<ArrivalOption> options;
+    for (const auto &[designator, routes] : airport.arrival_routes)
+    {
+        for (const auto &route : routes)
+            options.push_back({designator, route.label});
+    }
+    return options;
 }
 
 } // namespace
@@ -34,7 +36,7 @@ std::vector<NearbyAirport> find_nearby_airports(const VfrAirportDatabase &db, co
         double distance = geometry::distance_nm(aircraft_position, airport.arp);
         if (distance > max_distance_nm)
             continue;
-        result.push_back({icao, airport.name, distance, available_runways(airport), airport.runway_notes});
+        result.push_back({icao, airport.name, distance, available_options(airport), airport.runway_notes});
     }
 
     std::sort(result.begin(), result.end(),

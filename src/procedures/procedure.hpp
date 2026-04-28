@@ -23,8 +23,14 @@ struct ProcedureWaypoint
 // the FMS without knowing how it was constructed.
 struct Procedure
 {
-    std::string                    airport_icao;
-    std::string                    runway_designator;
+    std::string airport_icao;
+    std::string runway_designator;
+    // Label of the arrival route this procedure was built from. Empty for
+    // legacy airports with a single un-labelled route. The UI surfaces this
+    // alongside the active-procedure indicator so the pilot sees which sector
+    // is engaged ("LSZB RWY 14, WHISKEY").
+    std::string                    route_label;
+    int                            airport_elevation_ft = 0;
     std::vector<ProcedureWaypoint> waypoints;
 };
 } // namespace xpswissvfr::procedures

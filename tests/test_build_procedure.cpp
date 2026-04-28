@@ -46,8 +46,8 @@ VfrAirport make_lszg_airport()
         vrp("ABM ALTREU", 47.1860, 7.4490),
     };
     a.arrival_routes = {
-        {"06", {"E", "E1"}},
-        {"24", {"W", "HW"}},
+        {"06", {{"via E", {"E", "E1"}}}},
+        {"24", {{"via W", {"W", "HW"}}}},
     };
     a.circuit_pattern = CircuitPattern{1000, 1.0, 1.5};
     return a;
@@ -55,6 +55,9 @@ VfrAirport make_lszg_airport()
 
 // Computed pattern altitude for LSZG: elevation 1411 ft + circuit 1000 ft AGL.
 constexpr int LSZG_PATTERN_ALT_FT = 2411;
+// Field elevation, used as the runway-threshold altitude target so the X1000
+// has a sensible VNAV descent target from FAF down to the threshold.
+constexpr int LSZG_ELEVATION_FT = 1411;
 
 // Tolerance for coordinate checks. The equirectangular formulas are not
 // bit-exact across forward/inverse paths, but for VFR-pattern distances
@@ -79,7 +82,7 @@ TEST_CASE("build_procedure: missing arrival route returns nullopt", "[build_proc
 TEST_CASE("build_procedure: arrival route referencing unknown VRP returns nullopt", "[build_procedure]")
 {
     VfrAirport a               = make_lszg_airport();
-    a.arrival_routes.at("06") = {"E", "DOES_NOT_EXIST"};
+    a.arrival_routes.at("06") = {{"via E", {"E", "DOES_NOT_EXIST"}}};
     auto result               = build_procedure(a, "06");
     REQUIRE_FALSE(result.has_value());
 }
@@ -146,7 +149,7 @@ TEST_CASE("build_procedure LSZG RWY 06: pattern geometry (right circuit)", "[bui
         REQUIRE(thr.display_name == "RWY06");
         REQUIRE(thr.position.lat == Catch::Approx(47.1789).margin(POSITION_TOL));
         REQUIRE(thr.position.lon == Catch::Approx(7.4103).margin(POSITION_TOL));
-        REQUIRE(*thr.altitude_ft == 0);
+        REQUIRE(*thr.altitude_ft == LSZG_ELEVATION_FT);
     }
 }
 
@@ -219,10 +222,10 @@ TEST_CASE("build_procedure LSZG RWY 24: pattern is mirrored (left circuit)", "[b
     REQUIRE(thr.display_name == "RWY24");
     REQUIRE(thr.position.lat == Catch::Approx(47.1843).margin(POSITION_TOL));
     REQUIRE(thr.position.lon == Catch::Approx(7.4241).margin(POSITION_TOL));
-    REQUIRE(*thr.altitude_ft == 0);
+    REQUIRE(*thr.altitude_ft == LSZG_ELEVATION_FT);
 }
 
-TEST_CASE("build_procedure altitudes step down monotonically and end at 0", "[build_procedure]")
+TEST_CASE("build_procedure altitudes step down monotonically and end at field elevation", "[build_procedure]")
 {
     auto p = build_procedure(make_lszg_airport(), "06");
     REQUIRE(p.has_value());
@@ -236,13 +239,13 @@ TEST_CASE("build_procedure altitudes step down monotonically and end at 0", "[bu
         if (prev.altitude_ft && cur.altitude_ft)
             REQUIRE(*cur.altitude_ft <= *prev.altitude_ft);
     }
-    REQUIRE(*p->waypoints.back().altitude_ft == 0);
+    REQUIRE(*p->waypoints.back().altitude_ft == LSZG_ELEVATION_FT);
 }
 
 TEST_CASE("build_procedure: VRP names longer than 6 chars are truncated", "[build_procedure]")
 {
     VfrAirport a              = make_lszg_airport();
-    a.arrival_routes.at("06") = {"ABM ALTREU"};
+    a.arrival_routes.at("06") = {{"via ABM", {"ABM ALTREU"}}};
     auto p                    = build_procedure(a, "06");
     REQUIRE(p.has_value());
     REQUIRE(p->waypoints[0].display_name == "ABM AL");

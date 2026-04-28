@@ -23,10 +23,11 @@
     },
     "arrival_routes": {
       "type": "object",
+      "description": "For each runway designator: ordered list of arrival routes (each route = labelled VRP sequence). The label appears on the UI activate button; the VRP sequence is flown verbatim before the computed pattern legs.",
       "additionalProperties": {
         "type": "array",
         "minItems": 1,
-        "items": { "type": "string", "minLength": 1 }
+        "items": { "$ref": "#/$defs/arrival_route" }
       }
     },
     "runway_notes": {
@@ -95,6 +96,19 @@
         "last_updated": { "type": "string", "format": "date" },
         "verified_by":  { "type": "string" },
         "notes":        { "type": "string" }
+      }
+    },
+    "arrival_route": {
+      "type": "object",
+      "required": ["label", "vrps"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "vrps":  {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
       }
     }
   }

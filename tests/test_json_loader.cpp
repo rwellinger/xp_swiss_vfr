@@ -64,8 +64,11 @@ TEST_CASE("parse_airport populates every field of the valid LSZG fixture", "[jso
     SECTION("arrival_routes")
     {
         REQUIRE(airport.arrival_routes.size() == 2);
-        REQUIRE(airport.arrival_routes.at("06") == std::vector<std::string>{"E"});
-        REQUIRE(airport.arrival_routes.at("24") == std::vector<std::string>{"W"});
+        REQUIRE(airport.arrival_routes.at("06").size() == 1);
+        REQUIRE(airport.arrival_routes.at("06").front().label == "via E");
+        REQUIRE(airport.arrival_routes.at("06").front().vrps == std::vector<std::string>{"E"});
+        REQUIRE(airport.arrival_routes.at("24").front().label == "via W");
+        REQUIRE(airport.arrival_routes.at("24").front().vrps == std::vector<std::string>{"W"});
     }
 
     SECTION("circuit, frequencies, metadata")

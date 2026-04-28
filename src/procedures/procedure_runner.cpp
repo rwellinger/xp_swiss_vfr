@@ -12,6 +12,8 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <string>
+#include <vector>
 
 namespace xpswissvfr::procedures
 {
@@ -24,6 +26,30 @@ namespace
 // pre-existing user FPLs were invisible to us and our writes were invisible
 // to the avionic. xplm_Fpl_Pilot_Primary is the slot the pilot edits.
 constexpr XPLMNavFlightPlan FPL = xplm_Fpl_Pilot_Primary;
+
+// FPL slots we snapshot/restore around an activate. The Primary slot is the
+// main plan (origin → enroute → destination, including any SID/STAR waypoints
+// the avionics inserted). The Approach slot holds the destination's approach
+// procedure as chosen via the X1000 PROC menu — completely independent of
+// Navigraph (it is filled by X-Plane from default CIFP, or by Navigraph
+// overrides; either way the XPLM API exposes the same slot).
+constexpr XPLMNavFlightPlan SNAPSHOT_SLOTS[] = {
+    xplm_Fpl_Pilot_Primary,
+    xplm_Fpl_Pilot_Approach,
+};
+
+const char *slot_name(XPLMNavFlightPlan slot)
+{
+    switch (slot)
+    {
+    case xplm_Fpl_Pilot_Primary:
+        return "primary";
+    case xplm_Fpl_Pilot_Approach:
+        return "approach";
+    default:
+        return "?";
+    }
+}
 
 enum MenuItem : std::intptr_t
 {
@@ -38,9 +64,10 @@ bool       s_active   = false;
 
 // Identifies the currently active procedure. Populated on activate(), cleared
 // on clear_active_procedure(). Used by the UI to display "Active: <ICAO> RWY
-// <runway>".
+// <runway> / <route_label>".
 std::string s_active_icao;
 std::string s_active_runway;
+std::string s_active_route_label;
 
 ProcedureStateMachine s_state_machine;
 
@@ -56,7 +83,148 @@ XPLMCommandRef s_cmd_toggle_window    = nullptr;
 int s_inject_first = -1;
 int s_inject_count = 0;
 
+// Snapshot of every relevant FPL slot, captured immediately before the first
+// activate. On clear we wipe each slot and re-emit its entries so the pilot's
+// plan returns to exactly the state it was in before the procedure was
+// injected — including any departure airport, SID/STAR waypoints, the
+// destination airport (which we may have absorbed during inject), and the
+// approach procedure stored in the X1000's separate Approach slot.
+struct FmsEntry
+{
+    XPLMNavType type = 0;
+    std::string id;
+    XPLMNavRef  ref = XPLM_NAV_NOT_FOUND;
+    int         alt = 0;
+    float       lat = 0.0F;
+    float       lon = 0.0F;
+};
+struct SlotSnapshot
+{
+    XPLMNavFlightPlan     slot = xplm_Fpl_Pilot_Primary;
+    std::vector<FmsEntry> entries;
+};
+std::vector<SlotSnapshot> s_pre_activate_snapshots;
+
 void log_line(const char *line) { XPLMDebugString(line); }
+
+// Read every entry the X-Plane FMS API claims to have and write it to the
+// plugin log. Used as a diagnostic before/after each activate + clear so any
+// drift between what we expect and what the simulator has actually got is
+// visible immediately. The API can be unreliable directly after a fresh
+// session start (count==0 even when a Departure is visible in the avionics);
+// dumping the whole slot lets us catch that and reason about the resulting
+// inject offsets.
+void dump_one_slot(const char *context, XPLMNavFlightPlan slot)
+{
+    int count = XPLMCountFMSFlightPlanEntries(slot);
+    if (count <= 0)
+        return; // skip empty slots to keep the log readable
+
+    char buf[320];
+    std::snprintf(buf, sizeof(buf), "[xp_swiss_vfr] FPL dump (%s) slot=%s: count=%d\n", context, slot_name(slot),
+                  count);
+    log_line(buf);
+
+    for (int i = 0; i < count; ++i)
+    {
+        XPLMNavType type   = 0;
+        XPLMNavRef  ref    = XPLM_NAV_NOT_FOUND;
+        int         alt    = 0;
+        float       lat    = 0.0F;
+        float       lon    = 0.0F;
+        char        id[64] = {};
+        XPLMGetFMSFlightPlanEntryInfo(slot, i, &type, id, &ref, &alt, &lat, &lon);
+
+        std::snprintf(
+            buf, sizeof(buf),
+            "[xp_swiss_vfr] FPL dump (%s) slot=%s: idx=%d type=%d id=\"%s\" lat=%.6f lon=%.6f alt=%d ref=%d\n", context,
+            slot_name(slot), i, static_cast<int>(type), id, lat, lon, alt, static_cast<int>(ref));
+        log_line(buf);
+    }
+}
+
+void dump_existing_fpl(const char *context)
+{
+    for (auto slot : SNAPSHOT_SLOTS)
+        dump_one_slot(context, slot);
+}
+
+SlotSnapshot capture_one_slot(XPLMNavFlightPlan slot)
+{
+    SlotSnapshot snap;
+    snap.slot       = slot;
+    const int count = XPLMCountFMSFlightPlanEntries(slot);
+    snap.entries.reserve(static_cast<std::size_t>(count));
+
+    for (int i = 0; i < count; ++i)
+    {
+        FmsEntry e;
+        char     id[64] = {};
+        XPLMGetFMSFlightPlanEntryInfo(slot, i, &e.type, id, &e.ref, &e.alt, &e.lat, &e.lon);
+        e.id = id;
+        snap.entries.push_back(std::move(e));
+    }
+    return snap;
+}
+
+void capture_snapshot()
+{
+    s_pre_activate_snapshots.clear();
+    s_pre_activate_snapshots.reserve(sizeof(SNAPSHOT_SLOTS) / sizeof(SNAPSHOT_SLOTS[0]));
+
+    char buf[200];
+    for (auto slot : SNAPSHOT_SLOTS)
+    {
+        SlotSnapshot snap = capture_one_slot(slot);
+        std::snprintf(buf, sizeof(buf), "[xp_swiss_vfr] FPL snapshot captured: slot=%s, %zu entries\n", slot_name(slot),
+                      snap.entries.size());
+        log_line(buf);
+        s_pre_activate_snapshots.push_back(std::move(snap));
+    }
+}
+
+void restore_one_slot(const SlotSnapshot &snap)
+{
+    char buf[200];
+    std::snprintf(buf, sizeof(buf),
+                  "[xp_swiss_vfr] FPL snapshot restore: slot=%s, clearing and re-emitting %zu entries\n",
+                  slot_name(snap.slot), snap.entries.size());
+    log_line(buf);
+
+    const int count_before = XPLMCountFMSFlightPlanEntries(snap.slot);
+    for (int idx = count_before - 1; idx >= 0; --idx)
+        XPLMClearFMSFlightPlanEntry(snap.slot, idx);
+
+    for (std::size_t i = 0; i < snap.entries.size(); ++i)
+    {
+        const auto &e   = snap.entries[i];
+        const int   idx = static_cast<int>(i);
+
+        // LatLon-only entries (type 2048) cannot be restored via NavRef
+        // because their ref is -1; lat/lon-with-id is the only path. Same
+        // fallback applies if any other type ended up with an unresolved ref.
+        if (e.type == xplm_Nav_LatLon || e.ref == XPLM_NAV_NOT_FOUND)
+        {
+            XPLMSetFMSFlightPlanEntryLatLonWithId(snap.slot, idx, e.lat, e.lon, e.alt, e.id.c_str(),
+                                                  static_cast<unsigned int>(e.id.size()));
+        }
+        else
+        {
+            XPLMSetFMSFlightPlanEntryInfo(snap.slot, idx, e.ref, e.alt);
+        }
+    }
+}
+
+// Wipe each captured slot and re-emit its entries, returning every snapshotted
+// FPL to its pre-activate state. Empty snapshots are still replayed so a slot
+// that was empty before activate ends up empty afterward (e.g. user added a
+// PROC during the activated session — clear takes that out as well).
+void restore_snapshot()
+{
+    for (const auto &snap : s_pre_activate_snapshots)
+        restore_one_slot(snap);
+    s_pre_activate_snapshots.clear();
+}
 
 void remove_injected_entries(const char *context)
 {
@@ -104,13 +272,13 @@ void write_entry(int idx, const ProcedureWaypoint &w)
 }
 
 // Write an airport-type entry so the X1000 recognises the entry as a departure
-// (or destination) airport rather than a generic lat/lon point. Without this,
-// the previously-set "LSZG departure" in the X1000's flight-plan metadata is
-// lost as soon as we overwrite slot 0 with a lat/lon-with-id entry.
+// (or destination) airport rather than a generic lat/lon point. The altitude
+// passed in is the airport's published elevation — the X1000 uses it as a
+// VNAV target so the descent profile from FAF to threshold makes sense.
 //
 // Returns true when the airport navref was found and written; false on lookup
 // failure (caller can then proceed without the airport row).
-bool write_airport_entry(int idx, const std::string &icao)
+bool write_airport_entry(int idx, const std::string &icao, int elevation_ft)
 {
     XPLMNavRef ref = XPLMFindNavAid(nullptr, icao.c_str(), nullptr, nullptr, nullptr, xplm_Nav_Airport);
 
@@ -123,9 +291,9 @@ bool write_airport_entry(int idx, const std::string &icao)
         return false;
     }
 
-    XPLMSetFMSFlightPlanEntryInfo(FPL, idx, ref, /*inAltitude=*/0);
-    std::snprintf(buf, sizeof(buf), "[xp_swiss_vfr] FMS inject idx=%d airport=%s ref=%d\n", idx, icao.c_str(),
-                  static_cast<int>(ref));
+    XPLMSetFMSFlightPlanEntryInfo(FPL, idx, ref, elevation_ft);
+    std::snprintf(buf, sizeof(buf), "[xp_swiss_vfr] FMS inject idx=%d airport=%s elev=%d ref=%d\n", idx, icao.c_str(),
+                  elevation_ft, static_cast<int>(ref));
     log_line(buf);
     return true;
 }
@@ -226,11 +394,11 @@ int command_handler(XPLMCommandRef cmd, XPLMCommandPhase phase, void * /*ref*/)
 
 void init()
 {
-    s_root_idx = XPLMAppendMenuItem(XPLMFindPluginsMenu(), "xp_swiss_vfr", nullptr, 0);
-    s_menu     = XPLMCreateMenu("xp_swiss_vfr", XPLMFindPluginsMenu(), s_root_idx, &menu_handler, nullptr);
+    s_root_idx = XPLMAppendMenuItem(XPLMFindPluginsMenu(), "Swiss VFR", nullptr, 0);
+    s_menu     = XPLMCreateMenu("Swiss VFR", XPLMFindPluginsMenu(), s_root_idx, &menu_handler, nullptr);
 
-    XPLMAppendMenuItem(s_menu, "Show procedure selector", reinterpret_cast<void *>(ITEM_TOGGLE_WINDOW), 0);
-    XPLMAppendMenuItem(s_menu, "Clear active procedure", reinterpret_cast<void *>(ITEM_CLEAR), 0);
+    XPLMAppendMenuItem(s_menu, "Show pattern selector", reinterpret_cast<void *>(ITEM_TOGGLE_WINDOW), 0);
+    XPLMAppendMenuItem(s_menu, "Clear active pattern", reinterpret_cast<void *>(ITEM_CLEAR), 0);
 
     // Register X-Plane commands. Pilots can bind these to keyboard or joystick
     // via Settings → Keyboard / Joystick → search "xp_swiss_vfr". The legacy
@@ -283,49 +451,55 @@ void stop()
 
 void activate(const Procedure &procedure)
 {
+    dump_existing_fpl("before-activate");
+
     if (s_active)
     {
+        // Re-activate (e.g. user picked a different runway). Tear down our
+        // previous range but keep the snapshot — a later clear should still
+        // return all the way back to the state from BEFORE the very first
+        // activate, not just before the most recent re-activate.
         remove_injected_entries("re-activate");
+    }
+    else
+    {
+        capture_snapshot();
     }
 
     int  existing = XPLMCountFMSFlightPlanEntries(FPL);
-    int  start    = existing;
     char buf[256];
 
-    // Decide whether to prepend the procedure airport (e.g. LSZG) before the
-    // pattern waypoints:
-    //   - empty FPL                  → prepend, so the X1000 has a destination
-    //                                  anchor instead of starting on a raw VRP.
-    //   - FPL ends with our airport  → don't prepend; the existing entry IS
-    //                                  the destination and we append the
-    //                                  pattern after it.
-    //   - FPL has any other content  → don't prepend either. The pilot already
-    //                                  has an origin (or an unrelated plan)
-    //                                  and inserting our airport between their
-    //                                  data and the pattern just clutters the
-    //                                  flight plan. The runway threshold is
-    //                                  the de-facto destination.
-    const bool airport_already_present = last_entry_is_airport_with_icao(existing, procedure.airport_icao);
-    const bool fpl_is_empty            = existing == 0;
-    const bool wrote_airport =
-        fpl_is_empty && !airport_already_present && write_airport_entry(start, procedure.airport_icao);
-    const int procedure_offset = wrote_airport ? 1 : 0;
+    // Strategy: always append the pattern waypoints to the end of the existing
+    // FPL, then append the destination airport (LSZG) one slot further. The
+    // X1000 then sees the pattern leading INTO the destination airport, not
+    // ending on a raw runway-threshold waypoint.
+    //
+    // Edge case: if the FPL already ends with our destination airport (pilot
+    // had LSZG pre-set as destination), absorb that entry — we'll re-emit it
+    // at the very end so there is no "X → LSZG → E → … → RWY06 → LSZG"
+    // duplicate. The clear range is widened accordingly so a later clear
+    // restores the FPL to its pre-activation state.
+    const bool absorb_existing_destination = last_entry_is_airport_with_icao(existing, procedure.airport_icao);
+    int        waypoint_start              = existing;
+    int        track_first                 = existing;
+    if (absorb_existing_destination)
+    {
+        XPLMClearFMSFlightPlanEntry(FPL, existing - 1);
+        waypoint_start = existing - 1;
+        track_first    = existing - 1;
+    }
 
-    const char *airport_disposition = airport_already_present ? "kept-from-existing"
-                                      : wrote_airport         ? "prepended"
-                                      : fpl_is_empty          ? "lookup-failed"
-                                                              : "skipped (FPL non-empty)";
     std::snprintf(buf, sizeof(buf),
-                  "[xp_swiss_vfr] FMS inject: %s RWY %s (%zu waypoints, airport=%s), appending at idx=%d "
-                  "(existing FPL has %d entries)\n",
+                  "[xp_swiss_vfr] FMS inject: %s RWY %s (%zu waypoints), waypoints@idx=%d, existing FPL had %d "
+                  "entries, absorbed-existing-destination=%s\n",
                   procedure.airport_icao.c_str(), procedure.runway_designator.c_str(), procedure.waypoints.size(),
-                  airport_disposition, start, existing);
+                  waypoint_start, existing, absorb_existing_destination ? "yes" : "no");
     log_line(buf);
 
     for (std::size_t i = 0; i < procedure.waypoints.size(); ++i)
     {
         const auto &w   = procedure.waypoints[i];
-        int         idx = start + procedure_offset + static_cast<int>(i);
+        int         idx = waypoint_start + static_cast<int>(i);
 
         write_entry(idx, w);
 
@@ -336,27 +510,58 @@ void activate(const Procedure &procedure)
         log_readback(idx);
     }
 
-    s_inject_first  = start;
-    s_inject_count  = procedure_offset + static_cast<int>(procedure.waypoints.size());
-    s_active        = true;
-    s_active_icao   = procedure.airport_icao;
-    s_active_runway = procedure.runway_designator;
+    // Append destination airport at the very end so the procedure leads into
+    // a proper airport entry. If the airport navref lookup fails (very rare),
+    // we just skip — the runway threshold acts as a usable de-facto destination.
+    const int  airport_idx   = waypoint_start + static_cast<int>(procedure.waypoints.size());
+    const bool wrote_airport = write_airport_entry(airport_idx, procedure.airport_icao, procedure.airport_elevation_ft);
+
+    s_inject_first       = track_first;
+    s_inject_count       = static_cast<int>(procedure.waypoints.size()) + (wrote_airport ? 1 : 0);
+    s_active             = true;
+    s_active_icao        = procedure.airport_icao;
+    s_active_runway      = procedure.runway_designator;
+    s_active_route_label = procedure.route_label;
     s_state_machine.on_activate();
 
     int total = XPLMCountFMSFlightPlanEntries(FPL);
     std::snprintf(buf, sizeof(buf), "[xp_swiss_vfr] FMS inject done; range=[%d..%d] total_entries=%d state=%s\n",
                   s_inject_first, s_inject_first + s_inject_count - 1, total, state_name(s_state_machine.state()));
     log_line(buf);
+
+    dump_existing_fpl("after-activate");
 }
 
 void clear_active_procedure()
 {
     log_line("[xp_swiss_vfr] FMS clear: requested.\n");
-    remove_injected_entries("user-clear");
-    s_active = false;
+    dump_existing_fpl("before-clear");
+
+    if (s_active && !s_pre_activate_snapshots.empty())
+    {
+        // Full restore: replay every captured FPL slot exactly as it was
+        // before the very first activate. This brings back the pilot's
+        // departure airport, any SID/STAR waypoints, the destination airport
+        // we absorbed during inject, AND any approach procedure (PROC) the
+        // pilot had selected — none of which a range-only clear could recover.
+        restore_snapshot();
+    }
+    else
+    {
+        // No snapshot available (plugin loaded mid-flight, or clear called
+        // without an active procedure). Fall back to range-only removal.
+        remove_injected_entries("user-clear");
+    }
+
+    s_inject_first = -1;
+    s_inject_count = 0;
+    s_active       = false;
     s_active_icao.clear();
     s_active_runway.clear();
+    s_active_route_label.clear();
     s_state_machine.on_clear();
+
+    dump_existing_fpl("after-clear");
 }
 
 bool  is_active() { return s_active; }
@@ -366,7 +571,7 @@ std::optional<ActiveProcedureInfo> active_procedure_info()
 {
     if (!s_active)
         return std::nullopt;
-    return ActiveProcedureInfo{s_active_icao, s_active_runway};
+    return ActiveProcedureInfo{s_active_icao, s_active_runway, s_active_route_label};
 }
 
 } // namespace xpswissvfr::procedures

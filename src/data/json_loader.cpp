@@ -52,6 +52,12 @@ void from_json(const json &j, CircuitPattern &c)
     j.at("final_distance_nm").get_to(c.final_distance_nm);
 }
 
+void from_json(const json &j, ArrivalRoute &r)
+{
+    j.at("label").get_to(r.label);
+    j.at("vrps").get_to(r.vrps);
+}
+
 void from_json(const json &j, AirportMetadata &m)
 {
     m.source       = j.value("source", "");
@@ -68,7 +74,7 @@ void from_json(const json &j, VfrAirport &a)
     j.at("arp").get_to(a.arp);
     j.at("runways").get_to(a.runways);
     j.at("vrps").get_to(a.vrps);
-    a.arrival_routes = j.value("arrival_routes", std::map<std::string, std::vector<std::string>>{});
+    a.arrival_routes = j.value("arrival_routes", std::map<std::string, std::vector<ArrivalRoute>>{});
     a.runway_notes   = j.value("runway_notes", std::map<std::string, std::string>{});
     j.at("circuit_pattern").get_to(a.circuit_pattern);
     a.frequencies = j.value("frequencies", std::map<std::string, std::string>{});

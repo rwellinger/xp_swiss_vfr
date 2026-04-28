@@ -29,6 +29,16 @@ struct AirportMetadata
     std::string notes;
 };
 
+// One published arrival sector / route into a runway pattern. A runway can
+// have multiple routes (e.g. LSZB has NOVEMBER, ECHO, ZULU, SIERRA, WHISKEY
+// for runway 14). The label is what the UI renders on the activate button;
+// the vrp sequence is flown verbatim before the computed pattern legs.
+struct ArrivalRoute
+{
+    std::string              label; // e.g. "via E (long)" or "WHISKEY (W)"
+    std::vector<std::string> vrps;  // names that must exist in VfrAirport::vrps
+};
+
 struct VfrAirport
 {
     std::string         icao;
@@ -41,10 +51,12 @@ struct VfrAirport
     // pilot knowledge); a Navigraph runtime override layer (Phase 2 step 6)
     // can refine them when the user has a Navigraph subscription installed.
     std::vector<Waypoint> vrps;
-    // For each runway designator → ordered VRP names that form the published
-    // arrival route to that runway. Keys must match a runway designator.
-    // Values must reference VRP names that exist in `vrps`.
-    std::map<std::string, std::vector<std::string>> arrival_routes;
+    // For each runway designator → ordered list of arrival routes (each route
+    // is a VRP sequence labelled for the UI). The list is ordered as it should
+    // appear in the UI; std::map sorts by runway designator key only. Empty
+    // arrival_routes for a runway = no UI button for that runway. All VRP
+    // names referenced must exist in the airport's `vrps` list.
+    std::map<std::string, std::vector<ArrivalRoute>> arrival_routes;
     // Optional free-text per-runway notes, shown as a tooltip in the procedure
     // selector UI. Key = runway designator. Missing keys are rendered without
     // a tooltip — that is intentional, do not invent default text.

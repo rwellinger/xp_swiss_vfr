@@ -1,0 +1,47 @@
+{
+  "icao": "LSZB",
+  "name": "Bern-Belp",
+  "elevation_ft": 1673,
+  "arp": { "lat": 46.91222, "lon": 7.49944 },
+  "runways": [
+    { "designator": "14", "heading_true": 140.1, "length_m": 1730, "surface": "asphalt", "circuit_pattern": "left" },
+    { "designator": "32", "heading_true": 320.1, "length_m": 1730, "surface": "asphalt", "circuit_pattern": "right" }
+  ],
+  "vrps": [
+    { "name": "N",  "lat": 47.013889, "lon": 7.557500, "altitude_ft_min": 3000, "altitude_ft_max": 4000, "mandatory_report": true  },
+    { "name": "E",  "lat": 47.000278, "lon": 7.646111, "altitude_ft_min": 3000, "altitude_ft_max": 4000, "mandatory_report": true  },
+    { "name": "Z",  "lat": 46.780000, "lon": 7.603333, "altitude_ft_min": 3000, "altitude_ft_max": 4000, "mandatory_report": true  },
+    { "name": "S",  "lat": 46.843056, "lon": 7.498611, "altitude_ft_min": 3000, "altitude_ft_max": 4000, "mandatory_report": true  },
+    { "name": "W",  "lat": 46.930556, "lon": 7.393889, "altitude_ft_min": 3000, "altitude_ft_max": 4000, "mandatory_report": true  },
+    { "name": "HE", "lat": 46.916389, "lon": 7.565833, "altitude_ft_min": 2000, "altitude_ft_max": 3000, "mandatory_report": false },
+    { "name": "HW", "lat": 46.889722, "lon": 7.461389, "altitude_ft_min": 2000, "altitude_ft_max": 3000, "mandatory_report": false }
+  ],
+  "arrival_routes": {
+    "14": [
+      { "label": "via NOVEMBER (N)", "vrps": ["N"] },
+      { "label": "via ECHO (E)",     "vrps": ["E"] },
+      { "label": "via ZULU (Z)",     "vrps": ["Z"] },
+      { "label": "via SIERRA (S)",   "vrps": ["S"] },
+      { "label": "via WHISKEY (W)",  "vrps": ["W"] }
+    ],
+    "32": [
+      { "label": "via NOVEMBER (N)", "vrps": ["N"] },
+      { "label": "via ECHO (E)",     "vrps": ["E"] },
+      { "label": "via ZULU (Z)",     "vrps": ["Z"] },
+      { "label": "via SIERRA (S)",   "vrps": ["S"] },
+      { "label": "via WHISKEY (W)",  "vrps": ["W"] }
+    ]
+  },
+  "runway_notes": {
+    "14": "RWY 14 - left-hand pattern (Standard).\nUsed for arrival/departure up to 5 kts tailwind; otherwise City-Circling for RWY 32.\nReport intended routing on first contact with TWR (e.g. 'Route WHISKEY').\nPattern entry: from VRP, fly to E1/Z1/S1/W1 abeam pattern leg (topographic, not in nav DB).\nElev 1673 ft; pattern altitude 2673 ft (1000 ft AGL).\nAvoid TMA BERN 1+2 (FL100 / 5000 ft); CTR BERN max 4500 ft.",
+    "32": "RWY 32 - right-hand pattern (City Circling).\nUsed when RWY 14 tailwind > 5 kts.\nReport intended routing on first contact with TWR (e.g. 'Route WHISKEY').\nElev 1673 ft; pattern altitude 2673 ft (1000 ft AGL).\nAvoid TMA BERN 1+2 (FL100 / 5000 ft); CTR BERN max 4500 ft."
+  },
+  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 1.0, "final_distance_nm": 1.5 },
+  "frequencies": { "tower": "121.025", "approach": "127.325" },
+  "metadata": {
+    "source": "AIP Switzerland LSZB AD 2 (20 FEB 2025); IVAO VAC LSZB (JUL 2022); Navigraph earth_fix.dat for VRP coordinates",
+    "last_updated": "2026-04-29",
+    "verified_by": "thWelly + plugin-author research; pattern_direction (14=left, 32=right) is a plausible inference (City Circling implies right pattern for RWY 32) — verify against current Skyguide VAC before flight",
+    "notes": "Hauptpunkte N/E/Z/S/W taken from Navigraph earth_fix.dat (official VPxxx fixes for LSZB). HE/HW (helicopter sectors) from VAC (WIL R220/D2, FRI R053/D11.9). The _1-pendants (E1/Z1/S1/W1) of the published routes (NOVEMBER N→E1, ECHO E→E1, ZULU Z→Z1, SIERRA S→S1, WHISKEY W→W1) are topographic pattern-entry points not registered in any navaid database; the plugin omits them and lets build_procedure compute DW-BEG directly from the main VRP. Real-world pilot must hand-fly the actual _1 transition. ARP and elev are official AIP Switzerland values. Pattern_direction inference: 14=left is standard; 32=right is City Circling per VAC text — both need real-VAC verification."
+  }
+}

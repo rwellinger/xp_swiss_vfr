@@ -55,7 +55,24 @@ std::optional<int> vrp_altitude_ft(const data::Waypoint &vrp)
 }
 } // namespace
 
-std::optional<Procedure> build_procedure(const data::VfrAirport &airport, const std::string &runway_designator)
+// Find the arrival route by label inside the runway's route list. Empty label
+// = first route (the convenient default for single-route airports).
+const data::ArrivalRoute *find_route(const std::vector<data::ArrivalRoute> &routes, const std::string &route_label)
+{
+    if (routes.empty())
+        return nullptr;
+    if (route_label.empty())
+        return &routes.front();
+    for (const auto &r : routes)
+    {
+        if (r.label == route_label)
+            return &r;
+    }
+    return nullptr;
+}
+
+std::optional<Procedure> build_procedure(const data::VfrAirport &airport, const std::string &runway_designator,
+                                         const std::string &route_label)
 {
     const data::Runway *runway = find_runway(airport, runway_designator);
     if (runway == nullptr)
@@ -65,11 +82,17 @@ std::optional<Procedure> build_procedure(const data::VfrAirport &airport, const 
     if (route_it == airport.arrival_routes.end() || route_it->second.empty())
         return std::nullopt;
 
-    Procedure procedure;
-    procedure.airport_icao      = airport.icao;
-    procedure.runway_designator = runway_designator;
+    const data::ArrivalRoute *route = find_route(route_it->second, route_label);
+    if (route == nullptr)
+        return std::nullopt;
 
-    for (const auto &vrp_name : route_it->second)
+    Procedure procedure;
+    procedure.airport_icao         = airport.icao;
+    procedure.runway_designator    = runway_designator;
+    procedure.route_label          = route->label;
+    procedure.airport_elevation_ft = airport.elevation_ft;
+
+    for (const auto &vrp_name : route->vrps)
     {
         const data::Waypoint *vrp = find_vrp(airport, vrp_name);
         if (vrp == nullptr)
@@ -103,7 +126,9 @@ std::optional<Procedure> build_procedure(const data::VfrAirport &airport, const 
     procedure.waypoints.push_back({"DW-BEG", dw_beg_position, pattern_alt_ft + DW_BEG_OFFSET_FT});
     procedure.waypoints.push_back({"DW-END", dw_end_position, pattern_alt_ft});
     procedure.waypoints.push_back({"FAF", faf_position, pattern_alt_ft + FAF_OFFSET_FT});
-    procedure.waypoints.push_back({truncate_display("RWY" + runway_designator), thr_landing, 0});
+    // RWY waypoint sits at the landing threshold; its altitude is the airport
+    // elevation so the X1000 has a sensible VNAV target (FAF → threshold).
+    procedure.waypoints.push_back({truncate_display("RWY" + runway_designator), thr_landing, airport.elevation_ft});
 
     return procedure;
 }

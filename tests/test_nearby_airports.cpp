@@ -66,19 +66,27 @@ TEST_CASE("find_nearby_airports: max_count caps the list", "[nearby_airports]")
     REQUIRE(result.empty());
 }
 
-TEST_CASE("find_nearby_airports: available_runways matches arrival_routes keys", "[nearby_airports]")
+TEST_CASE("find_nearby_airports: options match arrival_routes (runway × route_label)", "[nearby_airports]")
 {
     auto result = find_nearby_airports(shared_database(), AT_LSZG, 15.0, 10);
     REQUIRE(result.size() == 1);
 
     const auto &lszg = result.front();
-    REQUIRE_FALSE(lszg.available_runways.empty());
-    // Sanity: every runway designator returned must be a real key in the
-    // airport's arrival_routes map (the UI will iterate exactly this list).
+    REQUIRE_FALSE(lszg.options.empty());
+    // Sanity: every (runway, label) pair in options must come from the
+    // airport's arrival_routes — the UI iterates this list one button per row.
     const VfrAirport *airport = shared_database().find("LSZG");
     REQUIRE(airport != nullptr);
-    for (const auto &rwy : lszg.available_runways)
-        REQUIRE(airport->arrival_routes.count(rwy) == 1);
+    for (const auto &option : lszg.options)
+    {
+        auto it = airport->arrival_routes.find(option.runway_designator);
+        REQUIRE(it != airport->arrival_routes.end());
+        bool label_found = false;
+        for (const auto &route : it->second)
+            if (route.label == option.route_label)
+                label_found = true;
+        REQUIRE(label_found);
+    }
 }
 
 TEST_CASE("find_nearby_airports: results sorted nearest-first", "[nearby_airports]")

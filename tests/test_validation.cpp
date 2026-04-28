@@ -35,7 +35,7 @@ VfrAirport make_valid_airport()
     vrp_e.mandatory_report = true;
     a.vrps.push_back(vrp_e);
 
-    a.arrival_routes["06"] = {"E"};
+    a.arrival_routes["06"] = {{"via E", {"E"}}};
 
     a.circuit_pattern = {1000, 0.7, 1.0};
     return a;
@@ -150,23 +150,44 @@ TEST_CASE("Altitude-band rule ignores half-bound waypoints", "[validation]")
 
 TEST_CASE("arrival_routes rule rejects unknown runway designator", "[validation]")
 {
-    auto a                    = make_valid_airport();
-    a.arrival_routes["99"]    = {"E"};
+    auto a                 = make_valid_airport();
+    a.arrival_routes["99"] = {{"via E", {"E"}}};
     REQUIRE(any_error_contains(validate(a), "unknown runway"));
 }
 
 TEST_CASE("arrival_routes rule rejects unknown VRP name", "[validation]")
 {
-    auto a                    = make_valid_airport();
-    a.arrival_routes["06"]    = {"DOES-NOT-EXIST"};
+    auto a                 = make_valid_airport();
+    a.arrival_routes["06"] = {{"via X", {"DOES-NOT-EXIST"}}};
     REQUIRE(any_error_contains(validate(a), "unknown vrp"));
 }
 
-TEST_CASE("arrival_routes rule rejects empty VRP sequence", "[validation]")
+TEST_CASE("arrival_routes rule rejects empty route list", "[validation]")
 {
-    auto a                    = make_valid_airport();
-    a.arrival_routes["06"]    = {};
-    REQUIRE(any_error_contains(validate(a), "is empty"));
+    auto a                 = make_valid_airport();
+    a.arrival_routes["06"] = {};
+    REQUIRE(any_error_contains(validate(a), "no routes"));
+}
+
+TEST_CASE("arrival_routes rule rejects empty VRP sequence in a route", "[validation]")
+{
+    auto a                 = make_valid_airport();
+    a.arrival_routes["06"] = {{"empty", {}}};
+    REQUIRE(any_error_contains(validate(a), "no VRPs"));
+}
+
+TEST_CASE("arrival_routes rule rejects empty route label", "[validation]")
+{
+    auto a                 = make_valid_airport();
+    a.arrival_routes["06"] = {{"", {"E"}}};
+    REQUIRE(any_error_contains(validate(a), "empty label"));
+}
+
+TEST_CASE("arrival_routes rule rejects duplicate route labels per runway", "[validation]")
+{
+    auto a                 = make_valid_airport();
+    a.arrival_routes["06"] = {{"via E", {"E"}}, {"via E", {"E"}}};
+    REQUIRE(any_error_contains(validate(a), "duplicate route label"));
 }
 
 TEST_CASE("circuit_pattern rule rejects non-positive downwind_offset_nm", "[validation]")

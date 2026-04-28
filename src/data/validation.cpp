@@ -100,16 +100,28 @@ std::optional<std::string> check_arrival_routes_reference_known_vrps(const VfrAi
     for (const auto &rwy : a.runways)
         known_runways.insert(rwy.designator);
 
-    for (const auto &[runway_designator, vrp_sequence] : a.arrival_routes)
+    for (const auto &[runway_designator, routes] : a.arrival_routes)
     {
         if (known_runways.count(runway_designator) == 0)
             return "arrival_routes references unknown runway: '" + runway_designator + "'";
-        if (vrp_sequence.empty())
-            return "arrival_routes['" + runway_designator + "'] is empty";
-        for (const auto &vrp_name : vrp_sequence)
+        if (routes.empty())
+            return "arrival_routes['" + runway_designator + "'] has no routes";
+
+        std::set<std::string> seen_labels;
+        for (const auto &route : routes)
         {
-            if (known_vrps.count(vrp_name) == 0)
-                return "arrival_routes['" + runway_designator + "'] references unknown vrp: '" + vrp_name + "'";
+            if (route.label.empty())
+                return "arrival_routes['" + runway_designator + "'] has a route with empty label";
+            if (!seen_labels.insert(route.label).second)
+                return "arrival_routes['" + runway_designator + "'] has duplicate route label: '" + route.label + "'";
+            if (route.vrps.empty())
+                return "arrival_routes['" + runway_designator + "'] route '" + route.label + "' has no VRPs";
+            for (const auto &vrp_name : route.vrps)
+            {
+                if (known_vrps.count(vrp_name) == 0)
+                    return "arrival_routes['" + runway_designator + "'] route '" + route.label +
+                           "' references unknown vrp: '" + vrp_name + "'";
+            }
         }
     }
     return std::nullopt;

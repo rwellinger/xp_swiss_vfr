@@ -27,6 +27,7 @@ struct ActiveProcedureInfo
 {
     std::string airport_icao;
     std::string runway_designator;
+    std::string route_label; // empty for legacy single-route airports
 };
 std::optional<ActiveProcedureInfo> active_procedure_info();
 } // namespace xpswissvfr::procedures
