@@ -1,0 +1,25 @@
+#include "core/plugin.hpp"
+#include "version.hpp"
+
+#include <XPLM/XPLMPlugin.h>
+
+#include <cstdio>
+#include <cstring>
+
+PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
+{
+    std::snprintf(outName, 255, "xp_swiss_vfr v%s", XP_SWISS_VFR_VERSION);
+    std::strncpy(outSig, "thWelly.xp_swiss_vfr", 255);
+    std::snprintf(outDesc, 255, "Swiss VFR approach procedures v%s", XP_SWISS_VFR_VERSION);
+
+    xpswissvfr::core::init();
+    return 1;
+}
+
+PLUGIN_API void XPluginStop() { xpswissvfr::core::stop(); }
+
+PLUGIN_API int XPluginEnable() { return 1; }
+
+PLUGIN_API void XPluginDisable() {}
+
+PLUGIN_API void XPluginReceiveMessage(XPLMPluginID, int, void *) {}

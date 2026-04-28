@@ -1,0 +1,164 @@
+name: Build
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y clang clang-tidy libgl-dev unzip curl
+
+      - name: Setup dependencies
+        run: make setup
+
+      - name: Configure (generate compile_commands.json)
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -Wno-dev
+
+      - name: Run clang-tidy
+        run: |
+          SRC_CPP=$(find src -type f -name '*.cpp')
+          clang-tidy -p build $SRC_CPP
+
+  build-macos:
+    needs: [lint]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup dependencies
+        run: make setup
+
+      - name: Build
+        run: |
+          RELEASE_FLAG=""
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then RELEASE_FLAG="-DRELEASE=ON"; fi
+          cmake -B build -DCMAKE_BUILD_TYPE=Release $RELEASE_FLAG -Wno-dev
+          cmake --build build --parallel
+
+      - name: Run tests
+        run: ./build/xp_swiss_vfr_tests
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: xp_swiss_vfr-macos
+          path: build/xp_swiss_vfr.xpl
+
+  build-linux:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: sudo apt-get update -q && sudo apt-get install -y libgl-dev
+
+      - name: Setup dependencies
+        run: make setup
+
+      - name: Build
+        run: |
+          RELEASE_FLAG=""
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then RELEASE_FLAG="-DRELEASE=ON"; fi
+          cmake -B build -DCMAKE_BUILD_TYPE=Release $RELEASE_FLAG -Wno-dev
+          cmake --build build --parallel
+
+      - name: Run tests
+        run: ./build/xp_swiss_vfr_tests
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: xp_swiss_vfr-linux
+          path: build/xp_swiss_vfr.xpl
+
+  build-windows:
+    needs: [lint]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install make
+        run: choco install make --no-progress -y
+
+      - name: Setup dependencies
+        shell: bash
+        run: make setup
+
+      - name: Build
+        shell: bash
+        run: |
+          RELEASE_FLAG=""
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then RELEASE_FLAG="-DRELEASE=ON"; fi
+          cmake -B build -A x64 $RELEASE_FLAG
+          cmake --build build --config Release
+
+      - name: Run tests
+        shell: bash
+        run: ./build/Release/xp_swiss_vfr_tests.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: xp_swiss_vfr-windows
+          path: build/Release/xp_swiss_vfr.xpl
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [lint, build-macos, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: xp_swiss_vfr-macos
+          path: dist/macos
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: xp_swiss_vfr-linux
+          path: dist/linux
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: xp_swiss_vfr-windows
+          path: dist/windows
+
+      - name: Build ZIP
+        run: |
+          mkdir -p dist/xp_swiss_vfr/mac_x64
+          mkdir -p dist/xp_swiss_vfr/lin_x64
+          mkdir -p dist/xp_swiss_vfr/win_x64
+          mkdir -p dist/xp_swiss_vfr/resources
+          cp dist/macos/xp_swiss_vfr.xpl   dist/xp_swiss_vfr/mac_x64/xp_swiss_vfr.xpl
+          cp dist/linux/xp_swiss_vfr.xpl   dist/xp_swiss_vfr/lin_x64/xp_swiss_vfr.xpl
+          cp dist/windows/xp_swiss_vfr.xpl dist/xp_swiss_vfr/win_x64/xp_swiss_vfr.xpl
+          if [ -d "resources" ]; then cp -R resources/. dist/xp_swiss_vfr/resources/; fi
+          cd dist && zip -r xp_swiss_vfr.zip xp_swiss_vfr/
+
+      - name: Create release with assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/xp_swiss_vfr.zip
+          generate_release_notes: true
