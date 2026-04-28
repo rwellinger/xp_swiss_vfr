@@ -30,6 +30,16 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/vendor
 )
 
+# ── Dear ImGui (vendored, OpenGL2 backend matches X-Plane's compatibility GL) ─
+set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/vendor/imgui)
+set(IMGUI_SOURCES
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_opengl2.cpp
+)
+
 # ── Plugin target ─────────────────────────────────────────────────────────────
 # Domain logic that is reused by the test target — kept in a variable so the
 # tests can link the same translation units without pulling in the SDK.
@@ -38,6 +48,7 @@ set(XP_SWISS_VFR_DATA_SOURCES
     src/data/validation.cpp
     src/data/vfr_airport_database.cpp
     src/data/navigraph_source.cpp
+    src/data/nearby_airports.cpp
 )
 
 # Procedure data is SDK-free and reused by the test target. The runner is
@@ -56,12 +67,18 @@ add_library(xp_swiss_vfr MODULE
     src/main.cpp
     src/core/plugin.cpp
     src/procedures/procedure_runner.cpp
+    src/ui/procedure_selection_window.cpp
     ${XP_SWISS_VFR_DATA_SOURCES}
     ${XP_SWISS_VFR_PROCEDURE_DATA_SOURCES}
     ${XP_SWISS_VFR_GEOMETRY_SOURCES}
+    ${IMGUI_SOURCES}
 )
 
-target_include_directories(xp_swiss_vfr PRIVATE src)
+target_include_directories(xp_swiss_vfr PRIVATE
+    src
+    ${IMGUI_DIR}
+    ${IMGUI_DIR}/backends
+)
 
 set_target_properties(xp_swiss_vfr PROPERTIES
     OUTPUT_NAME "xp_swiss_vfr"

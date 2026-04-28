@@ -45,8 +45,12 @@ struct VfrAirport
     // arrival route to that runway. Keys must match a runway designator.
     // Values must reference VRP names that exist in `vrps`.
     std::map<std::string, std::vector<std::string>> arrival_routes;
-    CircuitPattern                                  circuit_pattern;
-    std::map<std::string, std::string>              frequencies; // {"info": "121.235", "ground": ""}
-    AirportMetadata                                 metadata;
+    // Optional free-text per-runway notes, shown as a tooltip in the procedure
+    // selector UI. Key = runway designator. Missing keys are rendered without
+    // a tooltip — that is intentional, do not invent default text.
+    std::map<std::string, std::string> runway_notes;
+    CircuitPattern                     circuit_pattern;
+    std::map<std::string, std::string> frequencies; // {"info": "121.235", "ground": ""}
+    AirportMetadata                    metadata;
 };
 } // namespace xpswissvfr::data

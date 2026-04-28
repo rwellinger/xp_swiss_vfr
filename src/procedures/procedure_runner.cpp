@@ -3,6 +3,7 @@
 #include "core/plugin.hpp"
 #include "procedures/build_procedure.hpp"
 #include "procedures/procedure_state.hpp"
+#include "ui/procedure_selection_window.hpp"
 
 #include <XPLM/XPLMMenus.h>
 #include <XPLM/XPLMNavigation.h>
@@ -26,13 +27,20 @@ constexpr XPLMNavFlightPlan FPL = xplm_Fpl_Pilot_Primary;
 
 enum MenuItem : std::intptr_t
 {
-    ITEM_ACTIVATE_LSZG_06 = 1,
+    ITEM_TOGGLE_WINDOW    = 1,
     ITEM_CLEAR            = 2,
+    ITEM_ACTIVATE_LSZG_06 = 3, // power-user fallback (no menu entry, command only)
 };
 
 XPLMMenuID s_menu     = nullptr;
 int        s_root_idx = -1;
 bool       s_active   = false;
+
+// Identifies the currently active procedure. Populated on activate(), cleared
+// on clear_active_procedure(). Used by the UI to display "Active: <ICAO> RWY
+// <runway>".
+std::string s_active_icao;
+std::string s_active_runway;
 
 ProcedureStateMachine s_state_machine;
 
@@ -40,6 +48,7 @@ ProcedureStateMachine s_state_machine;
 // dispatches based on the ref pointer.
 XPLMCommandRef s_cmd_activate_lszg_06 = nullptr;
 XPLMCommandRef s_cmd_clear            = nullptr;
+XPLMCommandRef s_cmd_toggle_window    = nullptr;
 
 // Range of FMS indices we own. [s_inject_first .. s_inject_first + s_inject_count - 1]
 // Set on activate, used on clear so we only remove our own entries and leave any
@@ -184,8 +193,8 @@ void menu_handler(void * /*menu_ref*/, void *item_ref)
 {
     switch (reinterpret_cast<std::intptr_t>(item_ref))
     {
-    case ITEM_ACTIVATE_LSZG_06:
-        activate_lszg_06_test();
+    case ITEM_TOGGLE_WINDOW:
+        ui::toggle();
         break;
     case ITEM_CLEAR:
         clear_active_procedure();
@@ -208,6 +217,8 @@ int command_handler(XPLMCommandRef cmd, XPLMCommandPhase phase, void * /*ref*/)
         activate_lszg_06_test();
     else if (cmd == s_cmd_clear)
         clear_active_procedure();
+    else if (cmd == s_cmd_toggle_window)
+        ui::toggle();
     return 1;
 }
 
@@ -218,16 +229,20 @@ void init()
     s_root_idx = XPLMAppendMenuItem(XPLMFindPluginsMenu(), "xp_swiss_vfr", nullptr, 0);
     s_menu     = XPLMCreateMenu("xp_swiss_vfr", XPLMFindPluginsMenu(), s_root_idx, &menu_handler, nullptr);
 
-    XPLMAppendMenuItem(s_menu, "Activate LSZG RWY 06 (test)", reinterpret_cast<void *>(ITEM_ACTIVATE_LSZG_06), 0);
-    XPLMAppendMenuItem(s_menu, "Clear LSZG procedure", reinterpret_cast<void *>(ITEM_CLEAR), 0);
+    XPLMAppendMenuItem(s_menu, "Show procedure selector", reinterpret_cast<void *>(ITEM_TOGGLE_WINDOW), 0);
+    XPLMAppendMenuItem(s_menu, "Clear active procedure", reinterpret_cast<void *>(ITEM_CLEAR), 0);
 
     // Register X-Plane commands. Pilots can bind these to keyboard or joystick
-    // via Settings → Keyboard / Joystick → search "xp_swiss_vfr".
+    // via Settings → Keyboard / Joystick → search "xp_swiss_vfr". The legacy
+    // LSZG-06 activate command stays around as a power-user one-press fallback;
+    // it has no menu entry anymore.
     s_cmd_activate_lszg_06 =
         XPLMCreateCommand("xpswissvfr/activate/lszg/06", "Activate LSZG RWY 06 VFR procedure (test)");
-    s_cmd_clear = XPLMCreateCommand("xpswissvfr/clear", "Clear active VFR procedure");
+    s_cmd_clear         = XPLMCreateCommand("xpswissvfr/clear", "Clear active VFR procedure");
+    s_cmd_toggle_window = XPLMCreateCommand("xpswissvfr/window/toggle", "Toggle the VFR procedure-selector window");
     XPLMRegisterCommandHandler(s_cmd_activate_lszg_06, &command_handler, /*inBefore=*/1, nullptr);
     XPLMRegisterCommandHandler(s_cmd_clear, &command_handler, /*inBefore=*/1, nullptr);
+    XPLMRegisterCommandHandler(s_cmd_toggle_window, &command_handler, /*inBefore=*/1, nullptr);
 
     log_line("[xp_swiss_vfr] procedures::init — menu + commands registered.\n");
 }
@@ -243,6 +258,11 @@ void stop()
     {
         XPLMUnregisterCommandHandler(s_cmd_clear, &command_handler, /*inBefore=*/1, nullptr);
         s_cmd_clear = nullptr;
+    }
+    if (s_cmd_toggle_window != nullptr)
+    {
+        XPLMUnregisterCommandHandler(s_cmd_toggle_window, &command_handler, /*inBefore=*/1, nullptr);
+        s_cmd_toggle_window = nullptr;
     }
 
     if (s_menu != nullptr)
@@ -272,20 +292,34 @@ void activate(const Procedure &procedure)
     int  start    = existing;
     char buf[256];
 
-    // If the FPL already ends with the procedure's airport (e.g. pilot is
-    // flying `LSZB → … → LSZG` and activates the LSZG approach), append the
-    // pattern after it. Otherwise — empty FPL or some other destination —
-    // prepend our own airport entry so the X1000 still anchors on LSZG.
+    // Decide whether to prepend the procedure airport (e.g. LSZG) before the
+    // pattern waypoints:
+    //   - empty FPL                  → prepend, so the X1000 has a destination
+    //                                  anchor instead of starting on a raw VRP.
+    //   - FPL ends with our airport  → don't prepend; the existing entry IS
+    //                                  the destination and we append the
+    //                                  pattern after it.
+    //   - FPL has any other content  → don't prepend either. The pilot already
+    //                                  has an origin (or an unrelated plan)
+    //                                  and inserting our airport between their
+    //                                  data and the pattern just clutters the
+    //                                  flight plan. The runway threshold is
+    //                                  the de-facto destination.
     const bool airport_already_present = last_entry_is_airport_with_icao(existing, procedure.airport_icao);
-    const bool wrote_airport           = !airport_already_present && write_airport_entry(start, procedure.airport_icao);
-    const int  procedure_offset        = wrote_airport ? 1 : 0;
+    const bool fpl_is_empty            = existing == 0;
+    const bool wrote_airport =
+        fpl_is_empty && !airport_already_present && write_airport_entry(start, procedure.airport_icao);
+    const int procedure_offset = wrote_airport ? 1 : 0;
 
+    const char *airport_disposition = airport_already_present ? "kept-from-existing"
+                                      : wrote_airport         ? "prepended"
+                                      : fpl_is_empty          ? "lookup-failed"
+                                                              : "skipped (FPL non-empty)";
     std::snprintf(buf, sizeof(buf),
                   "[xp_swiss_vfr] FMS inject: %s RWY %s (%zu waypoints, airport=%s), appending at idx=%d "
                   "(existing FPL has %d entries)\n",
                   procedure.airport_icao.c_str(), procedure.runway_designator.c_str(), procedure.waypoints.size(),
-                  airport_already_present ? "kept-from-existing" : (wrote_airport ? "prepended" : "lookup-failed"),
-                  start, existing);
+                  airport_disposition, start, existing);
     log_line(buf);
 
     for (std::size_t i = 0; i < procedure.waypoints.size(); ++i)
@@ -302,9 +336,11 @@ void activate(const Procedure &procedure)
         log_readback(idx);
     }
 
-    s_inject_first = start;
-    s_inject_count = procedure_offset + static_cast<int>(procedure.waypoints.size());
-    s_active       = true;
+    s_inject_first  = start;
+    s_inject_count  = procedure_offset + static_cast<int>(procedure.waypoints.size());
+    s_active        = true;
+    s_active_icao   = procedure.airport_icao;
+    s_active_runway = procedure.runway_designator;
     s_state_machine.on_activate();
 
     int total = XPLMCountFMSFlightPlanEntries(FPL);
@@ -318,10 +354,19 @@ void clear_active_procedure()
     log_line("[xp_swiss_vfr] FMS clear: requested.\n");
     remove_injected_entries("user-clear");
     s_active = false;
+    s_active_icao.clear();
+    s_active_runway.clear();
     s_state_machine.on_clear();
 }
 
 bool  is_active() { return s_active; }
 State current_state() { return s_state_machine.state(); }
+
+std::optional<ActiveProcedureInfo> active_procedure_info()
+{
+    if (!s_active)
+        return std::nullopt;
+    return ActiveProcedureInfo{s_active_icao, s_active_runway};
+}
 
 } // namespace xpswissvfr::procedures

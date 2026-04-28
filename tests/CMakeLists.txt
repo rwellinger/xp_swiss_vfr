@@ -11,6 +11,7 @@ add_executable(xp_swiss_vfr_tests
     ${CMAKE_SOURCE_DIR}/src/data/validation.cpp
     ${CMAKE_SOURCE_DIR}/src/data/vfr_airport_database.cpp
     ${CMAKE_SOURCE_DIR}/src/data/navigraph_source.cpp
+    ${CMAKE_SOURCE_DIR}/src/data/nearby_airports.cpp
     ${CMAKE_SOURCE_DIR}/src/procedures/build_procedure.cpp
     ${CMAKE_SOURCE_DIR}/src/procedures/procedure_state.cpp
     ${CMAKE_SOURCE_DIR}/src/geometry/coordinate_math.cpp
@@ -22,6 +23,7 @@ add_executable(xp_swiss_vfr_tests
     test_build_procedure.cpp
     test_navigraph_source.cpp
     test_procedure_state.cpp
+    test_nearby_airports.cpp
 )
 
 target_include_directories(xp_swiss_vfr_tests PRIVATE

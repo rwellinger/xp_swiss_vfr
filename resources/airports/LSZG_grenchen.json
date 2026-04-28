@@ -20,6 +20,10 @@
     "06": ["E", "E1"],
     "24": ["W", "HW"]
   },
+  "runway_notes": {
+    "06": "RWY 06 - right-hand pattern.\nPattern altitude 2400 ft (1000 ft AGL, elev 1411 ft).\nArrival via VRP E (sector East, mandatory report) then E1.\nShort approach: skip E if entering from the West.\nNoise abatement: avoid overflying Solothurn city to the south-east.",
+    "24": "RWY 24 - left-hand pattern.\nPattern altitude 2400 ft (1000 ft AGL, elev 1411 ft).\nArrival via VRP W (sector West, mandatory report) then HW.\nFAF 1.5 NM final, intercept centerline at 2000 ft.\nVisual reference only - hand-fly the pattern."
+  },
   "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 1.0, "final_distance_nm": 1.5 },
   "frequencies": { "info": "121.235", "ground": "" },
   "metadata": {

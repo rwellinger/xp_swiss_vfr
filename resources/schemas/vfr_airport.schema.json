@@ -29,6 +29,11 @@
         "items": { "type": "string", "minLength": 1 }
       }
     },
+    "runway_notes": {
+      "type": "object",
+      "description": "Optional free-text per-runway notes shown as a tooltip in the UI. Keys must match a runway designator.",
+      "additionalProperties": { "type": "string" }
+    },
     "circuit_pattern": { "$ref": "#/$defs/circuit_pattern" },
     "frequencies": {
       "type": "object",

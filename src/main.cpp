@@ -1,5 +1,6 @@
 #include "core/plugin.hpp"
 #include "procedures/procedure_runner.hpp"
+#include "ui/procedure_selection_window.hpp"
 #include "version.hpp"
 
 #include <XPLM/XPLMPlugin.h>
@@ -14,6 +15,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     std::snprintf(outDesc, 255, "Swiss VFR approach procedures v%s", XP_SWISS_VFR_VERSION);
 
     xpswissvfr::core::init();
+    xpswissvfr::ui::init();
     xpswissvfr::procedures::init();
     return 1;
 }
@@ -21,6 +23,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 PLUGIN_API void XPluginStop()
 {
     xpswissvfr::procedures::stop();
+    xpswissvfr::ui::stop();
     xpswissvfr::core::stop();
 }
 

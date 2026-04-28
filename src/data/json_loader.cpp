@@ -69,6 +69,7 @@ void from_json(const json &j, VfrAirport &a)
     j.at("runways").get_to(a.runways);
     j.at("vrps").get_to(a.vrps);
     a.arrival_routes = j.value("arrival_routes", std::map<std::string, std::vector<std::string>>{});
+    a.runway_notes   = j.value("runway_notes", std::map<std::string, std::string>{});
     j.at("circuit_pattern").get_to(a.circuit_pattern);
     a.frequencies = j.value("frequencies", std::map<std::string, std::string>{});
     a.metadata    = j.value("metadata", AirportMetadata{});
