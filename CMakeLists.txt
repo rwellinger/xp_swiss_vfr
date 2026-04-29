@@ -66,6 +66,7 @@ set(XP_SWISS_VFR_GEOMETRY_SOURCES
 add_library(xp_swiss_vfr MODULE
     src/main.cpp
     src/core/plugin.cpp
+    src/persistence/settings.cpp
     src/procedures/procedure_runner.cpp
     src/ui/procedure_selection_window.cpp
     ${XP_SWISS_VFR_DATA_SOURCES}

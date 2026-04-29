@@ -1,0 +1,39 @@
+{
+  "icao": "LSZI",
+  "name": "Fricktal-Schupfart",
+  "elevation_ft": 1788,
+  "arp": { "lat": 47.508889, "lon": 7.95 },
+  "runways": [
+    { "designator": "07", "heading_true": 70.0,  "length_m": 530, "surface": "grass", "circuit_pattern": "left" },
+    { "designator": "25", "heading_true": 250.0, "length_m": 530, "surface": "grass", "circuit_pattern": "right" }
+  ],
+  "vrps": [
+    { "name": "E", "lat": 47.510000, "lon": 8.025000, "altitude_ft_min": 3000, "altitude_ft_max": 4000, "mandatory_report": true },
+    { "name": "W", "lat": 47.520000, "lon": 7.890000, "altitude_ft_min": 3000, "altitude_ft_max": 4000, "mandatory_report": true },
+    { "name": "S", "lat": 47.470000, "lon": 7.940000, "altitude_ft_min": 3000, "altitude_ft_max": 4000, "mandatory_report": true }
+  ],
+  "arrival_routes": {
+    "07": [
+      { "label": "via E (Frick)",         "vrps": ["E"] },
+      { "label": "via W (Eiken-Sisseln)", "vrps": ["W"] },
+      { "label": "via S (Olsberg)",       "vrps": ["S"] }
+    ],
+    "25": [
+      { "label": "via E (Frick)",         "vrps": ["E"] },
+      { "label": "via W (Eiken-Sisseln)", "vrps": ["W"] },
+      { "label": "via S (Olsberg)",       "vrps": ["S"] }
+    ]
+  },
+  "runway_notes": {
+    "07": "RWY 07 - grass, left-hand pattern (inference).\nElev 1788 ft; pattern altitude 2800 ft (1000 ft AGL).\nUncontrolled, no published frequency in apt.dat.\nNear LFSB Basel TMA to the west - stay below TMA floors.",
+    "25": "RWY 25 - grass, right-hand pattern (inference).\nElev 1788 ft; pattern altitude 2800 ft (1000 ft AGL).\nUncontrolled, no published frequency in apt.dat.\nNear LFSB Basel TMA to the west - stay below TMA floors."
+  },
+  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 1.0, "final_distance_nm": 1.5 },
+  "frequencies": {},
+  "metadata": {
+    "source": "X-Plane apt.dat (ARP, runway thresholds); Wikipedia DE for elevation and runway dimensions; VRPs are plausibility-based topographic inferences",
+    "last_updated": "2026-04-29",
+    "verified_by": "thWelly + plugin-author research; VRPs and pattern direction are plausibility-based - needs verification against current Skyguide VAC before flight",
+    "notes": "ARP 47.5089 N / 7.95 E and runway 07/25 grass 530 m x 30 m taken from apt.dat and Wikipedia. The parallel grass strip (07L/25R) is omitted (used in parallel by gliders). VRPs E/W/S are topographic placeholders pointing to Frick, Eiken-Sisseln and Olsberg respectively, set to ~2.5 NM from ARP - these are NOT the published Skyguide VAC points. No INFO/AFIS frequency listed in apt.dat. Operator: Aero-Club Schupfart."
+  }
+}

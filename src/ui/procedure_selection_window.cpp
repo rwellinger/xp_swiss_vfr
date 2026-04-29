@@ -3,6 +3,7 @@
 #include "core/plugin.hpp"
 #include "data/coordinate.hpp"
 #include "data/nearby_airports.hpp"
+#include "persistence/settings.hpp"
 #include "procedures/build_procedure.hpp"
 #include "procedures/procedure_runner.hpp"
 #include "procedures/procedure_state.hpp"
@@ -37,7 +38,12 @@ constexpr double      MAX_RANGE_NM        = 25.0;
 constexpr std::size_t MAX_NEARBY          = 10;
 constexpr int         REFRESH_INTERVAL_MS = 1000;
 constexpr float       DEFAULT_WIDTH       = 720.0F;
-constexpr float       DEFAULT_HEIGHT      = 460.0F;
+constexpr float       DEFAULT_HEIGHT      = 640.0F;
+
+// Delay between the user releasing a window-drag/resize and us flushing the
+// new geometry to disk. Mirrors xp_welly_atc — avoids one settings.json write
+// per frame while the window is being moved.
+constexpr float GEOMETRY_SAVE_DELAY_S = 1.0F;
 
 // ── State ────────────────────────────────────────────────────────────────────
 // XPLM full-screen invisible capture window. Created lazily on first show so
@@ -59,6 +65,10 @@ std::chrono::steady_clock::time_point s_nearby_last_refresh{};
 // arrives in the list. Falls back to the nearest airport when the selection
 // drops out of range. Empty = auto-pick the nearest.
 std::string s_selected_icao;
+
+// Debounce timer for persisting window geometry. Counts down once the user
+// stops dragging/resizing; reaching zero triggers a settings.json flush.
+float s_geometry_save_timer = 0.0F;
 
 // Lazy DataRefs for aircraft position + sim time. Resolved on first use; held
 // for the plugin's lifetime.
@@ -374,11 +384,60 @@ void draw_position_footer(const data::Coordinate &aircraft)
     ImGui::PopStyleColor();
 }
 
+// Apply persisted window geometry (or sensible defaults if none stored). Uses
+// ImGuiCond_FirstUseEver so subsequent user drag/resize is not overwritten.
+void apply_saved_geometry()
+{
+    const float sx = persistence::window_x();
+    const float sy = persistence::window_y();
+    const float sw = persistence::window_w();
+    const float sh = persistence::window_h();
+
+    if (sx >= 0.0F && sy >= 0.0F)
+        ImGui::SetNextWindowPos(ImVec2(sx, sy), ImGuiCond_FirstUseEver);
+
+    if (sw > 0.0F && sh > 0.0F)
+        ImGui::SetNextWindowSize(ImVec2(sw, sh), ImGuiCond_FirstUseEver);
+    else
+        ImGui::SetNextWindowSize(ImVec2(DEFAULT_WIDTH, DEFAULT_HEIGHT), ImGuiCond_FirstUseEver);
+
+    ImGui::SetNextWindowSizeConstraints(ImVec2(560, 360), ImVec2(1600, 1200));
+}
+
+// Capture the live ImGui window geometry, compare to what is persisted, and
+// schedule a debounced flush if it changed. Must be called while the target
+// window is the currently-active ImGui window (between Begin/End).
+void capture_geometry_changes()
+{
+    const ImVec2 pos  = ImGui::GetWindowPos();
+    const ImVec2 size = ImGui::GetWindowSize();
+
+    const float prev_x = persistence::window_x();
+    const float prev_y = persistence::window_y();
+    const float prev_w = persistence::window_w();
+    const float prev_h = persistence::window_h();
+
+    if (pos.x != prev_x || pos.y != prev_y || size.x != prev_w || size.y != prev_h)
+    {
+        persistence::set_window_geometry(pos.x, pos.y, size.x, size.y);
+        s_geometry_save_timer = GEOMETRY_SAVE_DELAY_S;
+    }
+
+    if (s_geometry_save_timer > 0.0F)
+    {
+        s_geometry_save_timer -= ImGui::GetIO().DeltaTime;
+        if (s_geometry_save_timer <= 0.0F)
+        {
+            persistence::save();
+            s_geometry_save_timer = 0.0F;
+        }
+    }
+}
+
 void draw_main_window()
 {
     bool open = s_visible;
-    ImGui::SetNextWindowSize(ImVec2(DEFAULT_WIDTH, DEFAULT_HEIGHT), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(560, 360), ImVec2(1600, 1200));
+    apply_saved_geometry();
 
     static const std::string title = std::string("Swiss VFR Patterns##main");
     if (ImGui::Begin(title.c_str(), &open, ImGuiWindowFlags_NoCollapse))
@@ -394,6 +453,8 @@ void draw_main_window()
         draw_nearby_table();
 
         draw_position_footer(aircraft);
+
+        capture_geometry_changes();
     }
     ImGui::End();
 

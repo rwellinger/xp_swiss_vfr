@@ -1,0 +1,42 @@
+{
+  "icao": "LSZK",
+  "name": "Speck-Fehraltorf",
+  "elevation_ft": 1758,
+  "arp": { "lat": 47.376389, "lon": 8.7575 },
+  "runways": [
+    { "designator": "12", "heading_true": 123.5, "length_m": 625, "surface": "grass", "circuit_pattern": "left" },
+    { "designator": "30", "heading_true": 303.5, "length_m": 625, "surface": "grass", "circuit_pattern": "right" }
+  ],
+  "vrps": [
+    { "name": "N", "lat": 47.420000, "lon": 8.770000, "altitude_ft_min": 2800, "altitude_ft_max": 3800, "mandatory_report": true },
+    { "name": "E", "lat": 47.345000, "lon": 8.795000, "altitude_ft_min": 2800, "altitude_ft_max": 3800, "mandatory_report": true },
+    { "name": "S", "lat": 47.325000, "lon": 8.770000, "altitude_ft_min": 2800, "altitude_ft_max": 3800, "mandatory_report": true },
+    { "name": "W", "lat": 47.380000, "lon": 8.690000, "altitude_ft_min": 2800, "altitude_ft_max": 3800, "mandatory_report": true }
+  ],
+  "arrival_routes": {
+    "12": [
+      { "label": "via N (Wila-Bauma)",      "vrps": ["N"] },
+      { "label": "via E (Pfaeffikersee)",   "vrps": ["E"] },
+      { "label": "via S (Hinwil)",          "vrps": ["S"] },
+      { "label": "via W (Lindau-Effretikon)","vrps": ["W"] }
+    ],
+    "30": [
+      { "label": "via N (Wila-Bauma)",      "vrps": ["N"] },
+      { "label": "via E (Pfaeffikersee)",   "vrps": ["E"] },
+      { "label": "via S (Hinwil)",          "vrps": ["S"] },
+      { "label": "via W (Lindau-Effretikon)","vrps": ["W"] }
+    ]
+  },
+  "runway_notes": {
+    "12": "RWY 12 - grass, left-hand pattern (inference, pattern south away from Fehraltorf and Russikon).\nElev 1758 ft; pattern altitude 2758 ft (1000 ft AGL), round to 2800 ft.\nSpeck Info 120.350.\nCRITICAL: directly under LSZH TMA Sector East, floor approximately 4500 ft - height constraint strict.",
+    "30": "RWY 30 - grass, right-hand pattern (inference, pattern south away from Fehraltorf and Russikon).\nElev 1758 ft; pattern altitude 2758 ft (1000 ft AGL), round to 2800 ft.\nSpeck Info 120.350.\nCRITICAL: directly under LSZH TMA Sector East, floor approximately 4500 ft - height constraint strict."
+  },
+  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 1.0, "final_distance_nm": 1.5 },
+  "frequencies": { "info": "120.350" },
+  "metadata": {
+    "source": "X-Plane apt.dat (ARP, runway thresholds, Speck Info frequency); Wikipedia DE for elevation and runway dimensions; VRPs are plausibility-based topographic inferences",
+    "last_updated": "2026-04-29",
+    "verified_by": "thWelly + plugin-author research; VRPs and pattern direction are plausibility-based - needs verification against current Skyguide VAC before flight",
+    "notes": "ARP 47.3764 N / 8.7575 E and runway 12/30 grass 625 m x 18 m taken from apt.dat and Wikipedia. VRPs N/E/S/W placed approximately 2-3 NM from ARP toward Wila, Pfaeffikersee, Hinwil and Lindau respectively - they are NOT the published Skyguide VAC points (LSZK published reporting points likely include PFAEFFIKERSEE, WIL, BAERETSWIL based on the regional pattern). Pattern direction (12=left, 30=right) inferred to keep pattern south, away from Fehraltorf (north) and Russikon (west). Speck Info 120.350 confirmed by apt.dat row 1054. Operator: Flugsportgruppe Zuercher Oberland (FGZO)."
+  }
+}

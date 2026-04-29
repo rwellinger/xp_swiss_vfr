@@ -1,0 +1,42 @@
+{
+  "icao": "LSPV",
+  "name": "Wangen-Lachen",
+  "elevation_ft": 1335,
+  "arp": { "lat": 47.204722, "lon": 8.8675 },
+  "runways": [
+    { "designator": "08", "heading_true": 78.6,  "length_m": 500, "surface": "asphalt", "circuit_pattern": "left" },
+    { "designator": "26", "heading_true": 258.6, "length_m": 500, "surface": "asphalt", "circuit_pattern": "right" }
+  ],
+  "vrps": [
+    { "name": "N", "lat": 47.245000, "lon": 8.870000, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true },
+    { "name": "E", "lat": 47.193000, "lon": 8.945000, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true },
+    { "name": "S", "lat": 47.170000, "lon": 8.860000, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true },
+    { "name": "W", "lat": 47.198000, "lon": 8.785000, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true }
+  ],
+  "arrival_routes": {
+    "08": [
+      { "label": "via N (Lake Zurich)",       "vrps": ["N"] },
+      { "label": "via E (Tuggen-Linthebene)", "vrps": ["E"] },
+      { "label": "via S (Buttikon)",          "vrps": ["S"] },
+      { "label": "via W (Pfaeffikon SZ)",     "vrps": ["W"] }
+    ],
+    "26": [
+      { "label": "via N (Lake Zurich)",       "vrps": ["N"] },
+      { "label": "via E (Tuggen-Linthebene)", "vrps": ["E"] },
+      { "label": "via S (Buttikon)",          "vrps": ["S"] },
+      { "label": "via W (Pfaeffikon SZ)",     "vrps": ["W"] }
+    ]
+  },
+  "runway_notes": {
+    "08": "RWY 08 - left-hand pattern (inference, pattern north over Lake Zurich shore to avoid town to the south).\nElev 1335 ft; pattern altitude 2335 ft (1000 ft AGL).\nAFIS 123.200.\nCRITICAL: under LSZH TMA Sector East, floor 4500 ft - stay well below.\nLSPW seaplane base (Switzerland's only seaplane operation) shares the area.",
+    "26": "RWY 26 - right-hand pattern (inference, pattern north over Lake Zurich shore to avoid town to the south).\nElev 1335 ft; pattern altitude 2335 ft (1000 ft AGL).\nAFIS 123.200.\nCRITICAL: under LSZH TMA Sector East, floor 4500 ft - stay well below."
+  },
+  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 1.0, "final_distance_nm": 1.5 },
+  "frequencies": { "info": "123.200" },
+  "metadata": {
+    "source": "X-Plane apt.dat (ARP, runway thresholds, AFIS frequency); Wikipedia DE for elevation and runway dimensions; VRPs are plausibility-based topographic inferences",
+    "last_updated": "2026-04-29",
+    "verified_by": "thWelly + plugin-author research; VRPs and pattern direction are plausibility-based - needs verification against current Skyguide VAC before flight",
+    "notes": "ARP and runway 08/26 asphalt 500 m x 18 m taken from apt.dat and Wikipedia. VRPs N/E/S/W are placeholders pointing toward Lake Zurich (N), Tuggen-Linthebene (E), Buttikon (S), and Pfaeffikon SZ (W) - approximately 2.5-3 NM from ARP, NOT the published Skyguide VAC points. Pattern direction (08=left, 26=right) inferred to keep pattern north over the lake shore. AFIS 123.200 confirmed by apt.dat row 1054. Adjacent LSPW seaplane ICAO at the same site is intentionally not modelled (separate ICAO; this plugin handles fixed-airfield ops only)."
+  }
+}

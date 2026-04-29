@@ -1,0 +1,42 @@
+{
+  "icao": "LSZF",
+  "name": "Birrfeld",
+  "elevation_ft": 1310,
+  "arp": { "lat": 47.443333, "lon": 8.233889 },
+  "runways": [
+    { "designator": "08", "heading_true": 80.4,  "length_m": 718, "surface": "asphalt", "circuit_pattern": "left" },
+    { "designator": "26", "heading_true": 260.4, "length_m": 718, "surface": "asphalt", "circuit_pattern": "right" }
+  ],
+  "vrps": [
+    { "name": "N", "lat": 47.485000, "lon": 8.230000, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true },
+    { "name": "E", "lat": 47.450000, "lon": 8.310000, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true },
+    { "name": "S", "lat": 47.395000, "lon": 8.225000, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true },
+    { "name": "W", "lat": 47.443000, "lon": 8.165000, "altitude_ft_min": 2500, "altitude_ft_max": 3500, "mandatory_report": true }
+  ],
+  "arrival_routes": {
+    "08": [
+      { "label": "via N (Brugg)",       "vrps": ["N"] },
+      { "label": "via E (Wettingen)",   "vrps": ["E"] },
+      { "label": "via S (Schinznach)",  "vrps": ["S"] },
+      { "label": "via W (Othmarsingen)","vrps": ["W"] }
+    ],
+    "26": [
+      { "label": "via N (Brugg)",       "vrps": ["N"] },
+      { "label": "via E (Wettingen)",   "vrps": ["E"] },
+      { "label": "via S (Schinznach)",  "vrps": ["S"] },
+      { "label": "via W (Othmarsingen)","vrps": ["W"] }
+    ]
+  },
+  "runway_notes": {
+    "08": "RWY 08 - left-hand pattern (inference, pattern S of RWY to avoid Lupfig village to the north).\nElev 1310 ft; pattern altitude 2310 ft (1000 ft AGL).\nUncontrolled; AD INFO 123.550 (Birrfeld AD).\nWithin TMA Zurich Lower (5500 ft); stay below.\nGrass parallels (08L/R) used for glider operations only - not represented here.",
+    "26": "RWY 26 - right-hand pattern (inference, pattern S of RWY to avoid Lupfig village to the north).\nElev 1310 ft; pattern altitude 2310 ft (1000 ft AGL).\nUncontrolled; AD INFO 123.550 (Birrfeld AD).\nWithin TMA Zurich Lower (5500 ft); stay below."
+  },
+  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 1.0, "final_distance_nm": 1.5 },
+  "frequencies": { "info": "123.550" },
+  "metadata": {
+    "source": "X-Plane apt.dat (ARP, runway thresholds, AD frequency); Wikipedia DE for elevation and runway dimensions; VRPs are plausibility-based topographic inferences",
+    "last_updated": "2026-04-29",
+    "verified_by": "thWelly + plugin-author research; VRPs and pattern direction are plausibility-based - needs verification against current Skyguide VAC before flight",
+    "notes": "ARP and runway thresholds taken from X-Plane apt.dat (Global Airports). Elevation 1310 ft per Wikipedia (apt.dat 1210 is outdated). Runway 08/26 paved 718 m x 20 m asphalt (Wikipedia); the two grass parallels (08L/R, 08R/L) used by gliders are intentionally omitted - this plugin focuses on motor-VFR procedures. VRPs N/E/S/W are topographic inferences placed approximately 2.5-3 NM from ARP toward Brugg, Wettingen, Schinznach and Othmarsingen respectively - they are NOT the published Skyguide VAC reporting points and must be cross-checked. Pattern direction (08=left, 26=right) is inferred to keep pattern south of the runway (away from Lupfig). AD frequency 123.550 confirmed by apt.dat row 1051."
+  }
+}

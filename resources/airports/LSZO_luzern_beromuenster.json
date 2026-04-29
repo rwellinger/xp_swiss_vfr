@@ -1,0 +1,42 @@
+{
+  "icao": "LSZO",
+  "name": "Luzern-Beromuenster",
+  "elevation_ft": 2146,
+  "arp": { "lat": 47.19, "lon": 8.204722 },
+  "runways": [
+    { "designator": "15", "heading_true": 157.6, "length_m": 510, "surface": "grass", "circuit_pattern": "left" },
+    { "designator": "33", "heading_true": 337.6, "length_m": 510, "surface": "grass", "circuit_pattern": "right" }
+  ],
+  "vrps": [
+    { "name": "N", "lat": 47.235000, "lon": 8.210000, "altitude_ft_min": 3500, "altitude_ft_max": 4500, "mandatory_report": true },
+    { "name": "E", "lat": 47.195000, "lon": 8.275000, "altitude_ft_min": 3500, "altitude_ft_max": 4500, "mandatory_report": true },
+    { "name": "S", "lat": 47.140000, "lon": 8.205000, "altitude_ft_min": 3500, "altitude_ft_max": 4500, "mandatory_report": true },
+    { "name": "W", "lat": 47.190000, "lon": 8.135000, "altitude_ft_min": 3500, "altitude_ft_max": 4500, "mandatory_report": true }
+  ],
+  "arrival_routes": {
+    "15": [
+      { "label": "via N (Triengen direction)",   "vrps": ["N"] },
+      { "label": "via E (Sempachersee)",         "vrps": ["E"] },
+      { "label": "via S (Pfeffikon LU)",         "vrps": ["S"] },
+      { "label": "via W (Beromuenster town)",    "vrps": ["W"] }
+    ],
+    "33": [
+      { "label": "via N (Triengen direction)",   "vrps": ["N"] },
+      { "label": "via E (Sempachersee)",         "vrps": ["E"] },
+      { "label": "via S (Pfeffikon LU)",         "vrps": ["S"] },
+      { "label": "via W (Beromuenster town)",    "vrps": ["W"] }
+    ]
+  },
+  "runway_notes": {
+    "15": "RWY 15 - grass, left-hand pattern (inference, keeps pattern east away from Beromuenster town).\nElev 2146 ft; pattern altitude 3146 ft (1000 ft AGL), round to 3200 ft.\nAFIS 122.450.\nPPR for non-based aircraft and visiting pilots on RWY 33 per Wikipedia.\nOpen rural topography, no TMA conflicts.",
+    "33": "RWY 33 - grass, right-hand pattern (inference, keeps pattern east away from Beromuenster town).\nElev 2146 ft; pattern altitude 3146 ft (1000 ft AGL), round to 3200 ft.\nAFIS 122.450.\nPPR for non-based aircraft and visiting pilots on RWY 33 per Wikipedia."
+  },
+  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 1.0, "final_distance_nm": 1.5 },
+  "frequencies": { "info": "122.450" },
+  "metadata": {
+    "source": "X-Plane apt.dat (ARP, runway thresholds, AFIS frequency); Wikipedia DE for elevation and runway dimensions; VRPs are plausibility-based topographic inferences",
+    "last_updated": "2026-04-29",
+    "verified_by": "thWelly + plugin-author research; VRPs and pattern direction are plausibility-based - needs verification against current Skyguide VAC before flight",
+    "notes": "Name 'Luzern-Beromuenster' transliterated from 'Luzern-Beromuenster' to ASCII per ImGui-only-ASCII rule. Elevation 2146 ft per Wikipedia (apt.dat 2245 deviates - prefer Wikipedia/AIP). Glider parallel 15/33 GLD omitted. VRPs N/E/S/W are topographic placeholders ~2.5-3 NM from ARP - not published Skyguide VAC reporting points. Pattern direction (15=left, 33=right) inferred to keep pattern east, away from Beromuenster town to the west. AFIS 122.450 confirmed by apt.dat row 1051."
+  }
+}

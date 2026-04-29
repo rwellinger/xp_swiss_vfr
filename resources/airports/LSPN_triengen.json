@@ -1,0 +1,42 @@
+{
+  "icao": "LSPN",
+  "name": "Triengen",
+  "elevation_ft": 1594,
+  "arp": { "lat": 47.226667, "lon": 8.078056 },
+  "runways": [
+    { "designator": "15", "heading_true": 149.0, "length_m": 570, "surface": "asphalt", "circuit_pattern": "left" },
+    { "designator": "33", "heading_true": 329.0, "length_m": 570, "surface": "asphalt", "circuit_pattern": "right" }
+  ],
+  "vrps": [
+    { "name": "N", "lat": 47.265000, "lon": 8.080000, "altitude_ft_min": 2800, "altitude_ft_max": 3800, "mandatory_report": true },
+    { "name": "E", "lat": 47.215000, "lon": 8.135000, "altitude_ft_min": 2800, "altitude_ft_max": 3800, "mandatory_report": true },
+    { "name": "S", "lat": 47.190000, "lon": 8.090000, "altitude_ft_min": 2800, "altitude_ft_max": 3800, "mandatory_report": true },
+    { "name": "W", "lat": 47.228000, "lon": 8.020000, "altitude_ft_min": 2800, "altitude_ft_max": 3800, "mandatory_report": true }
+  ],
+  "arrival_routes": {
+    "15": [
+      { "label": "via N (Schoeftland direction)", "vrps": ["N"] },
+      { "label": "via E (Schlierbach)",           "vrps": ["E"] },
+      { "label": "via S (Buron)",                 "vrps": ["S"] },
+      { "label": "via W (Suhre-Tal)",             "vrps": ["W"] }
+    ],
+    "33": [
+      { "label": "via N (Schoeftland direction)", "vrps": ["N"] },
+      { "label": "via E (Schlierbach)",           "vrps": ["E"] },
+      { "label": "via S (Buron)",                 "vrps": ["S"] },
+      { "label": "via W (Suhre-Tal)",             "vrps": ["W"] }
+    ]
+  },
+  "runway_notes": {
+    "15": "RWY 15 - asphalt, left-hand pattern (inference).\nElev 1594 ft; pattern altitude 2594 ft (1000 ft AGL), round to 2600 ft.\nUncontrolled, no published frequency in apt.dat.\nPrivate airfield (Flying Ranch AG); PPR may apply.\nOpen rural topography, no TMA conflicts.",
+    "33": "RWY 33 - asphalt, right-hand pattern (inference).\nElev 1594 ft; pattern altitude 2594 ft (1000 ft AGL), round to 2600 ft.\nUncontrolled, no published frequency in apt.dat.\nPrivate airfield (Flying Ranch AG); PPR may apply.\nRunway extended south by 160 m in October 2010 per Wikipedia."
+  },
+  "circuit_pattern": { "altitude_ft_agl": 1000, "downwind_offset_nm": 1.0, "final_distance_nm": 1.5 },
+  "frequencies": {},
+  "metadata": {
+    "source": "X-Plane apt.dat (ARP, runway thresholds); Wikipedia DE for elevation and runway dimensions; VRPs are plausibility-based topographic inferences",
+    "last_updated": "2026-04-29",
+    "verified_by": "thWelly + plugin-author research; VRPs and pattern direction are plausibility-based - needs verification against current Skyguide VAC before flight",
+    "notes": "ARP 47.2267 N / 8.0781 E and runway 15/33 asphalt 570 m x 15 m taken from apt.dat and Wikipedia. VRPs N/E/S/W placed approximately 2-3 NM from ARP toward Schoeftland (N), Schlierbach (E), Buron (S) and the Suhre valley (W) - they are NOT the published Skyguide VAC points. Pattern direction (15=left, 33=right) is the conservative default; verify against VAC. No INFO/AFIS frequency listed in apt.dat. Operator: Flying Ranch AG (private)."
+  }
+}
