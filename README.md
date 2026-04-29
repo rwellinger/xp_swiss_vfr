@@ -2,7 +2,9 @@
 
 A C++17 X-Plane 12 plugin that fills the Swiss VFR gap left by Navigraph CIFP — the small Swiss airfields that ship no IFR procedures and therefore have no FMS-injectable approach pattern out of the box.
 
-> **Status:** in development, not yet released. Currently supported airports: **LSZG (Grenchen)**, **LSZB (Bern-Belp)**. The list grows as we verify data per airport — the Swiss build is still the focus, then later Germany, France, and Austria.
+> **Status:** in development, not yet released. Currently supported airports: **LSZB (Bern-Belp)**, **LSZG (Grenchen)**, **LSZF (Birrfeld)**, **LSZI (Fricktal-Schupfart)**, **LSZK (Speck-Fehraltorf)**, **LSZO (Luzern-Beromünster)**, **LSPN (Triengen)**, **LSPV (Wangen-Lachen)**. The list grows as we verify data per airport — the Swiss build is still the focus, then later Germany, France, and Austria.
+>
+> **Data quality:** all airport files are maintained on a **best-effort** basis from public AIP / VAC sources. We cross-check coordinates, elevations, runway directions, and pattern geometry against Skyguide AD 2 and the operator-published VAC, but we do not fly every circuit ourselves before release. Errors and outdated data can slip through — please report any deviation you spot in the sim against the current chart, and always brief the real chart before flight.
 
 ---
 
@@ -155,7 +157,7 @@ make install      # codesign + copy into the X-Plane plugins directory
 
 ## Limitations
 
-- **Coverage is intentionally narrow today.** Currently only **LSZG** and **LSZB** ship. Adding an airport is mechanical — one JSON file, no code change — but the data verification step is the bottleneck. We add a place only when its data is traceable to an AIP / VAC source.
+- **Coverage is intentionally narrow today.** Currently eight Swiss airfields ship (LSZB, LSZG, LSZF, LSZI, LSZK, LSZO, LSPN, LSPV). Adding an airport is mechanical — one JSON file, no code change — but the data verification step is the bottleneck. We add a place only when its data is traceable to an AIP / VAC source, and even then on a **best-effort** basis: the published JSON reflects the chart we read at import time, not a continuously audited dataset.
 - **VFR reference only.** The injected pattern is a visual reference for *hand-flown* circuits. Garmin-style autopilots cannot track the 90° turns at pattern speed; a built-in warning banner makes this unmissable. There is no certification, no IFR backing, and no expectation that an autopilot will fly a published Swiss VFR circuit cleanly.
 - **Topographic pattern-entry points are computed, not chart-exact.** The `_1`-pendants you see on Swiss VACs (`E1` after sector ECHO, `W1` after sector WHISKEY, …) are not registered as official navaid fixes — they exist only on the chart, defined by a topographic landmark. The plugin generates the corresponding leg geometrically from the airport's circuit-pattern data instead of fabricating coordinates. The pilot must still hand-fly the actual transition.
 - **Pattern direction inference for new airports.** When AIP / VAC text does not state pattern direction explicitly, we infer it from local context (e.g. "city to the west of runway → right pattern keeps traffic over open terrain") and mark the assumption in `metadata.verified_by`. These inferences need a real-VAC review before a release.
@@ -171,7 +173,7 @@ make install      # codesign + copy into the X-Plane plugins directory
 The current priority is depth of Swiss coverage before we open the field to other regions.
 
 **Switzerland — next**
-- LSZF Birrfeld, LSPN Schänis, LSGK Saanen, LSPM Speck-Fehraltorf, LSPL Langenthal, LSGB Bex, LSGY Yverdon-les-Bains, LSME Mollis, LSPV Wangen-Lachen, LSZW Thun, LSGS Sion (VFR), LSZC Buochs, LSZO Olten, LSZR St. Gallen-Altenrhein, … — added one at a time, each with an AIP / VAC trace in `metadata.source`.
+- LSGK Saanen, LSPL Langenthal, LSGB Bex, LSGY Yverdon-les-Bains, LSME Mollis, LSZW Thun, LSGS Sion (VFR), LSZC Buochs, LSZR St. Gallen-Altenrhein, … — added one at a time, each with an AIP / VAC trace in `metadata.source` and pattern geometry verified to best effort against the current VAC.
 
 **Internationalisation — later phases**
 - Germany (EDxx), France (LFxx), Austria (LOxx). VFR practice is similar enough that the schema and pattern engine carry over; what changes is the data work per airfield.
