@@ -3,11 +3,23 @@
 Fills the Swiss VFR gap left by Navigraph CIFP — the small Swiss airfields that ship no IFR procedures and therefore have no FMS-injectable approach pattern out of the box. Pick an airfield and an arrival sector, and the plugin writes the published Visual Reporting Points (VRPs) and a proper VFR pattern (downwind, FAF, threshold, destination) into the active flight plan. The avionics (G1000 / GNS / GTN / X530) sequence the pattern like any normal procedure.
 
 
+### Supported Airfields (v1.0.0)
+
+  - **LSZB** — Bern-Belp
+  - **LSZF** — Birrfeld
+  - **LSZG** — Grenchen
+  - **LSZI** — Fricktal-Schupfart
+  - **LSZK** — Speck-Fehraltorf
+  - **LSZO** — Luzern-Beromünster
+  - **LSPN** — Triengen
+  - **LSPV** — Wangen-Lachen
+
+  Each file is built from AIP Switzerland AD 2 (Skyguide) and the operator-published VAC, with a traceable `metadata.source` per airport. Adding more airfields is a JSON-only change — no code, no rebuild. See *Roadmap* below for what's next.
+
+
 ### What's New in v1.0.0
 
-  - **Initial public release.**
-  - **8 Swiss airfields** at launch: LSZB (Bern-Belp), LSZG (Grenchen), LSZF (Birrfeld), LSZI (Fricktal-Schupfart), LSZK (Speck-Fehraltorf), LSZO (Luzern-Beromünster), LSPN (Triengen), LSPV (Wangen-Lachen). Adding more is a JSON-only change — no code, no rebuild.
-  - **Real-world data sourcing** — every airport file is built from AIP Switzerland AD 2 (Skyguide) and the operator-published Visual Approach Charts (VAC), with a traceable `metadata.source` per file.
+  - **Initial public release** with the 8 Swiss airfields listed above.
   - **Navigraph auto-detect** — if `Custom Data/cycle_info.txt` is present, the runtime override layer replaces VRP coordinates with the precise published `VPxxx` values and logs each upgrade. The plugin runs fully without Navigraph; shipped JSONs already contain workable coordinates.
   - **Computed pattern-entry points** — chart-only `_1`-pendants like `E1` / `W1` (topographic landmarks, not registered as navaid fixes) are generated geometrically from each airport's circuit pattern instead of fabricating coordinates.
   - **Snapshot & restore** — the existing flight plan (origin, SID, en-route fixes, destination, approach) is captured before injection, and *Clear* restores it byte-for-byte. The destination airport is absorbed and re-emitted at the end of the procedure block, so no duplicate destination entry appears.
