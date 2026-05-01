@@ -29,11 +29,12 @@ make setup          # download X-Plane SDK + ImGui + json.hpp + Catch2 into sdk/
 make build          # CMake Release build → build/xp_swiss_vfr.xpl
 make build-windows  # cross-targeted Windows build (used by CI)
 make test           # build and run the Catch2 test executable (xp_swiss_vfr_tests)
+make sanitize       # build and run the tests under ASan + UBSan (build-sanitize/, plugin .xpl excluded)
 make lint           # clang-tidy against build-lint/ with compile_commands.json (mirrors xp_pilot)
 make format         # clang-format -i src/**/*.{cpp,hpp}
 make install        # codesign and copy the .xpl + resources/ into ~/X-Plane 12/Resources/plugins/xp_swiss_vfr/
 make release VERSION=x.y.z   # bump VERSION.txt, tag, push
-make clean          # remove build/ and build-lint/
+make clean          # remove build/, build-lint/ and build-sanitize/
 ```
 
 The plugin is also tested manually inside X-Plane 12 — domain-logic unit tests do not cover SDK integration.

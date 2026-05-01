@@ -13,7 +13,7 @@ CATCH2_VERSION := 3.7.1
 SRC_FILES := $(shell find src -type f \( -name '*.cpp' -o -name '*.hpp' \) 2>/dev/null)
 SRC_CPP   := $(shell find src -type f -name '*.cpp' 2>/dev/null)
 
-.PHONY: help all setup build test install format lint build-windows release release-build cleanup-tags cleanup-runs clean distclean
+.PHONY: help all setup build test sanitize install format lint build-windows release release-build cleanup-tags cleanup-runs clean distclean
 
 .DEFAULT_GOAL := help
 
@@ -28,8 +28,9 @@ help:
 	@echo "  setup           Download SDK, Dear ImGui, nlohmann/json, Catch2 into sdk/ + vendor/"
 	@echo "  build           Configure + compile → build/xp_swiss_vfr.xpl"
 	@echo "  test            Build and run the Catch2 unit tests"
+	@echo "  sanitize        Build and run the unit tests under ASan + UBSan"
 	@echo "  install         Code-sign and copy the plugin into X-Plane (mac_x64)"
-	@echo "  clean           Remove build/ and build-lint/"
+	@echo "  clean           Remove build/, build-lint/ and build-sanitize/"
 	@echo "  distclean       clean + remove sdk/ and vendor/ (everything 'make setup' installed)"
 	@echo ""
 	@echo "Code quality:"
@@ -116,6 +117,25 @@ build: $(SDK_SENTINEL) $(IMGUI_SENTINEL) $(JSON_SENTINEL) $(CATCH2_SENTINEL)
 test: build
 	@echo "=== Running xp_swiss_vfr tests ==="
 	@./build/xp_swiss_vfr_tests
+
+# ── Sanitize ──────────────────────────────────────────────────────────────────
+# Build the SDK-free unit tests with ASan + UBSan and run them. The plugin
+# MODULE target (.xpl) is intentionally NOT instrumented — ASan inside the
+# X-Plane process is fragile on macOS ARM64 (dyld + code-signing); use
+# Instruments.app for live diagnostics. LeakSanitizer is unsupported on
+# macOS ARM64 and explicitly disabled below.
+sanitize: $(SDK_SENTINEL) $(IMGUI_SENTINEL) $(JSON_SENTINEL) $(CATCH2_SENTINEL)
+	@echo "=== Configuring sanitizer build (ASan + UBSan) ==="
+	cmake -B build-sanitize -DCMAKE_BUILD_TYPE=Debug -DXP_SWISS_VFR_SANITIZE=ON -DCMAKE_OSX_ARCHITECTURES=arm64 -Wno-dev
+	@echo "=== Building xp_swiss_vfr_tests with ASan + UBSan ==="
+	cmake --build build-sanitize --target xp_swiss_vfr_tests --parallel
+	@echo ""
+	@echo "=== Running unit tests under ASan + UBSan ==="
+	@ASAN_OPTIONS=detect_leaks=0:abort_on_error=1:print_stacktrace=1 \
+	 UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 \
+	     ./build-sanitize/xp_swiss_vfr_tests
+	@echo ""
+	@echo "Sanitizer run clean."
 
 # ── Install ───────────────────────────────────────────────────────────────────
 install:
@@ -205,7 +225,7 @@ cleanup-runs:
 
 # ── Clean ─────────────────────────────────────────────────────────────────────
 clean:
-	rm -rf build build-lint
+	rm -rf build build-lint build-sanitize
 
 # ── Distclean ─────────────────────────────────────────────────────────────────
 # Remove everything 'make setup' downloaded so a full re-bootstrap is forced.

@@ -46,6 +46,13 @@ else()
     target_compile_options(xp_swiss_vfr_tests PRIVATE -Wall -Wextra -Wno-unused-parameter)
 endif()
 
+if(XP_SWISS_VFR_SANITIZE)
+    target_compile_options(xp_swiss_vfr_tests PRIVATE
+        ${XP_SWISS_VFR_SANITIZER_FLAGS} -O1 -g)
+    target_link_options(xp_swiss_vfr_tests PRIVATE
+        ${XP_SWISS_VFR_SANITIZER_FLAGS})
+endif()
+
 # Tests run on the host arch only — no Universal Binary, no Rosetta slice.
 if(APPLE)
     set_target_properties(xp_swiss_vfr_tests PROPERTIES

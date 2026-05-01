@@ -6,6 +6,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_TESTS "Build unit tests" ON)
 
+# AddressSanitizer + UndefinedBehaviorSanitizer for the test target only.
+# The plugin MODULE target is intentionally never instrumented: ASan inside
+# the X-Plane process is fragile on macOS ARM64 (dyld + code-signing). Use
+# Instruments.app for live SDK-coupled diagnostics instead.
+option(XP_SWISS_VFR_SANITIZE "Enable ASan + UBSan on the test target" OFF)
+if(XP_SWISS_VFR_SANITIZE)
+    set(XP_SWISS_VFR_SANITIZER_FLAGS
+        -fsanitize=address,undefined
+        -fno-omit-frame-pointer
+        -fno-sanitize-recover=all
+    )
+    message(STATUS "Sanitizer build: ASan + UBSan on tests")
+endif()
+
 if(APPLE)
     # Universal Binary: native arm64 + x86_64 via Rosetta.
     # Allow override from command line (e.g. make lint passes arm64 only).
