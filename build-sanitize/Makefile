@@ -310,6 +310,54 @@ src/geometry/coordinate_math.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/xp_swiss_vfr.dir/build.make CMakeFiles/xp_swiss_vfr.dir/src/geometry/coordinate_math.cpp.s
 .PHONY : src/geometry/coordinate_math.cpp.s
 
+src/geometry/terrain.o: src/geometry/terrain.cpp.o
+.PHONY : src/geometry/terrain.o
+
+# target to build an object file
+src/geometry/terrain.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/xp_swiss_vfr.dir/build.make CMakeFiles/xp_swiss_vfr.dir/src/geometry/terrain.cpp.o
+.PHONY : src/geometry/terrain.cpp.o
+
+src/geometry/terrain.i: src/geometry/terrain.cpp.i
+.PHONY : src/geometry/terrain.i
+
+# target to preprocess a source file
+src/geometry/terrain.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/xp_swiss_vfr.dir/build.make CMakeFiles/xp_swiss_vfr.dir/src/geometry/terrain.cpp.i
+.PHONY : src/geometry/terrain.cpp.i
+
+src/geometry/terrain.s: src/geometry/terrain.cpp.s
+.PHONY : src/geometry/terrain.s
+
+# target to generate assembly for a file
+src/geometry/terrain.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/xp_swiss_vfr.dir/build.make CMakeFiles/xp_swiss_vfr.dir/src/geometry/terrain.cpp.s
+.PHONY : src/geometry/terrain.cpp.s
+
+src/geometry/terrain_xplm.o: src/geometry/terrain_xplm.cpp.o
+.PHONY : src/geometry/terrain_xplm.o
+
+# target to build an object file
+src/geometry/terrain_xplm.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/xp_swiss_vfr.dir/build.make CMakeFiles/xp_swiss_vfr.dir/src/geometry/terrain_xplm.cpp.o
+.PHONY : src/geometry/terrain_xplm.cpp.o
+
+src/geometry/terrain_xplm.i: src/geometry/terrain_xplm.cpp.i
+.PHONY : src/geometry/terrain_xplm.i
+
+# target to preprocess a source file
+src/geometry/terrain_xplm.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/xp_swiss_vfr.dir/build.make CMakeFiles/xp_swiss_vfr.dir/src/geometry/terrain_xplm.cpp.i
+.PHONY : src/geometry/terrain_xplm.cpp.i
+
+src/geometry/terrain_xplm.s: src/geometry/terrain_xplm.cpp.s
+.PHONY : src/geometry/terrain_xplm.s
+
+# target to generate assembly for a file
+src/geometry/terrain_xplm.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/xp_swiss_vfr.dir/build.make CMakeFiles/xp_swiss_vfr.dir/src/geometry/terrain_xplm.cpp.s
+.PHONY : src/geometry/terrain_xplm.cpp.s
+
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
@@ -605,6 +653,12 @@ help:
 	@echo "... src/geometry/coordinate_math.o"
 	@echo "... src/geometry/coordinate_math.i"
 	@echo "... src/geometry/coordinate_math.s"
+	@echo "... src/geometry/terrain.o"
+	@echo "... src/geometry/terrain.i"
+	@echo "... src/geometry/terrain.s"
+	@echo "... src/geometry/terrain_xplm.o"
+	@echo "... src/geometry/terrain_xplm.i"
+	@echo "... src/geometry/terrain_xplm.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"

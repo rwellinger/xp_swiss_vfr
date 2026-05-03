@@ -1,4 +1,5 @@
 #include "core/plugin.hpp"
+#include "geometry/terrain.hpp"
 #include "persistence/settings.hpp"
 #include "procedures/procedure_runner.hpp"
 #include "ui/procedure_selection_window.hpp"
@@ -23,6 +24,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     std::snprintf(outDesc, 255, "Swiss VFR approach procedures v%s", XP_SWISS_VFR_VERSION);
 
     xpswissvfr::core::init();
+    xpswissvfr::geometry::terrain_init();
     xpswissvfr::persistence::init();
     xpswissvfr::ui::init();
     xpswissvfr::procedures::init();
@@ -34,6 +36,7 @@ PLUGIN_API void XPluginStop()
     xpswissvfr::procedures::stop();
     xpswissvfr::ui::stop();
     xpswissvfr::persistence::stop();
+    xpswissvfr::geometry::terrain_stop();
     xpswissvfr::core::stop();
 }
 

@@ -73,13 +73,17 @@ set(XP_SWISS_VFR_PROCEDURE_DATA_SOURCES
 )
 
 # Geometry helpers (lat/lon math) are SDK-free and reused by the test target.
+# terrain.cpp ships pure clamp logic; the SDK-coupled probe lives in
+# terrain_xplm.cpp and is plugin-only.
 set(XP_SWISS_VFR_GEOMETRY_SOURCES
     src/geometry/coordinate_math.cpp
+    src/geometry/terrain.cpp
 )
 
 add_library(xp_swiss_vfr MODULE
     src/main.cpp
     src/core/plugin.cpp
+    src/geometry/terrain_xplm.cpp
     src/persistence/settings.cpp
     src/procedures/procedure_runner.cpp
     src/ui/procedure_selection_window.cpp

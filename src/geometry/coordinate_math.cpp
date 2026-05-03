@@ -51,4 +51,9 @@ data::Coordinate offset(const data::Coordinate &from, double bearing_deg, double
     double mid_lat = 0.5 * (from.lat + new_lat);
     return {new_lat, from.lon + dx / nm_per_degree_lon(mid_lat)};
 }
+
+data::Coordinate interpolate(const data::Coordinate &a, const data::Coordinate &b, double fraction)
+{
+    return {a.lat + (b.lat - a.lat) * fraction, a.lon + (b.lon - a.lon) * fraction};
+}
 } // namespace xpswissvfr::geometry

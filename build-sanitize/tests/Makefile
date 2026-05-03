@@ -274,6 +274,30 @@ __/src/geometry/coordinate_math.cpp.s:
 	cd /Users/robertw/Workspace/x-plane/xp_swiss_vfr/build-sanitize && $(MAKE) $(MAKESILENT) -f tests/CMakeFiles/xp_swiss_vfr_tests.dir/build.make tests/CMakeFiles/xp_swiss_vfr_tests.dir/__/src/geometry/coordinate_math.cpp.s
 .PHONY : __/src/geometry/coordinate_math.cpp.s
 
+__/src/geometry/terrain.o: __/src/geometry/terrain.cpp.o
+.PHONY : __/src/geometry/terrain.o
+
+# target to build an object file
+__/src/geometry/terrain.cpp.o:
+	cd /Users/robertw/Workspace/x-plane/xp_swiss_vfr/build-sanitize && $(MAKE) $(MAKESILENT) -f tests/CMakeFiles/xp_swiss_vfr_tests.dir/build.make tests/CMakeFiles/xp_swiss_vfr_tests.dir/__/src/geometry/terrain.cpp.o
+.PHONY : __/src/geometry/terrain.cpp.o
+
+__/src/geometry/terrain.i: __/src/geometry/terrain.cpp.i
+.PHONY : __/src/geometry/terrain.i
+
+# target to preprocess a source file
+__/src/geometry/terrain.cpp.i:
+	cd /Users/robertw/Workspace/x-plane/xp_swiss_vfr/build-sanitize && $(MAKE) $(MAKESILENT) -f tests/CMakeFiles/xp_swiss_vfr_tests.dir/build.make tests/CMakeFiles/xp_swiss_vfr_tests.dir/__/src/geometry/terrain.cpp.i
+.PHONY : __/src/geometry/terrain.cpp.i
+
+__/src/geometry/terrain.s: __/src/geometry/terrain.cpp.s
+.PHONY : __/src/geometry/terrain.s
+
+# target to generate assembly for a file
+__/src/geometry/terrain.cpp.s:
+	cd /Users/robertw/Workspace/x-plane/xp_swiss_vfr/build-sanitize && $(MAKE) $(MAKESILENT) -f tests/CMakeFiles/xp_swiss_vfr_tests.dir/build.make tests/CMakeFiles/xp_swiss_vfr_tests.dir/__/src/geometry/terrain.cpp.s
+.PHONY : __/src/geometry/terrain.cpp.s
+
 __/src/procedures/build_procedure.o: __/src/procedures/build_procedure.cpp.o
 .PHONY : __/src/procedures/build_procedure.o
 
@@ -538,6 +562,30 @@ test_smoke.cpp.s:
 	cd /Users/robertw/Workspace/x-plane/xp_swiss_vfr/build-sanitize && $(MAKE) $(MAKESILENT) -f tests/CMakeFiles/xp_swiss_vfr_tests.dir/build.make tests/CMakeFiles/xp_swiss_vfr_tests.dir/test_smoke.cpp.s
 .PHONY : test_smoke.cpp.s
 
+test_terrain.o: test_terrain.cpp.o
+.PHONY : test_terrain.o
+
+# target to build an object file
+test_terrain.cpp.o:
+	cd /Users/robertw/Workspace/x-plane/xp_swiss_vfr/build-sanitize && $(MAKE) $(MAKESILENT) -f tests/CMakeFiles/xp_swiss_vfr_tests.dir/build.make tests/CMakeFiles/xp_swiss_vfr_tests.dir/test_terrain.cpp.o
+.PHONY : test_terrain.cpp.o
+
+test_terrain.i: test_terrain.cpp.i
+.PHONY : test_terrain.i
+
+# target to preprocess a source file
+test_terrain.cpp.i:
+	cd /Users/robertw/Workspace/x-plane/xp_swiss_vfr/build-sanitize && $(MAKE) $(MAKESILENT) -f tests/CMakeFiles/xp_swiss_vfr_tests.dir/build.make tests/CMakeFiles/xp_swiss_vfr_tests.dir/test_terrain.cpp.i
+.PHONY : test_terrain.cpp.i
+
+test_terrain.s: test_terrain.cpp.s
+.PHONY : test_terrain.s
+
+# target to generate assembly for a file
+test_terrain.cpp.s:
+	cd /Users/robertw/Workspace/x-plane/xp_swiss_vfr/build-sanitize && $(MAKE) $(MAKESILENT) -f tests/CMakeFiles/xp_swiss_vfr_tests.dir/build.make tests/CMakeFiles/xp_swiss_vfr_tests.dir/test_terrain.cpp.s
+.PHONY : test_terrain.cpp.s
+
 test_validation.o: test_validation.cpp.o
 .PHONY : test_validation.o
 
@@ -589,6 +637,9 @@ help:
 	@echo "... __/src/geometry/coordinate_math.o"
 	@echo "... __/src/geometry/coordinate_math.i"
 	@echo "... __/src/geometry/coordinate_math.s"
+	@echo "... __/src/geometry/terrain.o"
+	@echo "... __/src/geometry/terrain.i"
+	@echo "... __/src/geometry/terrain.s"
 	@echo "... __/src/procedures/build_procedure.o"
 	@echo "... __/src/procedures/build_procedure.i"
 	@echo "... __/src/procedures/build_procedure.s"
@@ -622,6 +673,9 @@ help:
 	@echo "... test_smoke.o"
 	@echo "... test_smoke.i"
 	@echo "... test_smoke.s"
+	@echo "... test_terrain.o"
+	@echo "... test_terrain.i"
+	@echo "... test_terrain.s"
 	@echo "... test_validation.o"
 	@echo "... test_validation.i"
 	@echo "... test_validation.s"

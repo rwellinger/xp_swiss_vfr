@@ -1,10 +1,13 @@
 #include "data/vfr_airport.hpp"
 #include "geometry/coordinate_math.hpp"
+#include "geometry/terrain.hpp"
 #include "procedures/build_procedure.hpp"
 
 #include <catch2/catch_amalgamated.hpp>
 
+#include <algorithm>
 #include <cmath>
+#include <optional>
 
 using xpswissvfr::data::CircuitPattern;
 using xpswissvfr::data::Coordinate;
@@ -12,6 +15,8 @@ using xpswissvfr::data::Runway;
 using xpswissvfr::data::VfrAirport;
 using xpswissvfr::data::Waypoint;
 using xpswissvfr::geometry::bearing_deg;
+using xpswissvfr::geometry::distance_nm;
+using xpswissvfr::geometry::TerrainSource;
 using xpswissvfr::procedures::build_procedure;
 using xpswissvfr::procedures::Procedure;
 
@@ -249,4 +254,168 @@ TEST_CASE("build_procedure: VRP names longer than 6 chars are truncated", "[buil
     auto p                    = build_procedure(a, "06");
     REQUIRE(p.has_value());
     REQUIRE(p->waypoints[0].display_name == "ABM AL");
+}
+
+namespace
+{
+// LSZB-shaped airport for descent-helper tests: high VRPs (3500 ft) into a
+// 1000 ft AGL pattern over a 1673 ft elevation field. Single VRP per route
+// keeps the helper count predictable.
+VfrAirport make_lszb_like_airport(int vrp_alt_min, int vrp_alt_max)
+{
+    VfrAirport a;
+    a.icao         = "LSZB";
+    a.name         = "Bern-Belp";
+    a.elevation_ft = 1673;
+    a.arp          = {46.91222, 7.49944};
+    a.runways      = {
+        {"14", 140.0, 1730, "asphalt", "left"},
+        {"32", 320.0, 1730, "asphalt", "right"},
+    };
+    auto vrp = [&](std::string name, double lat, double lon) {
+        Waypoint w;
+        w.name             = std::move(name);
+        w.position         = {lat, lon};
+        w.altitude_ft_min  = vrp_alt_min;
+        w.altitude_ft_max  = vrp_alt_max;
+        w.mandatory_report = false;
+        return w;
+    };
+    a.vrps           = {vrp("S", 46.843056, 7.498611), vrp("E", 47.000278, 7.646111)};
+    a.arrival_routes = {
+        {"14", {{"via S", {"S"}}, {"via E", {"E"}}}},
+        {"32", {{"via S", {"S"}}}},
+    };
+    a.circuit_pattern = CircuitPattern{1000, 1.0, 1.5};
+    return a;
+}
+
+int count_helpers(const Procedure &p)
+{
+    int n = 0;
+    for (const auto &w : p.waypoints)
+    {
+        if (!w.display_name.empty() && w.display_name.front() == 'D' &&
+            w.display_name.size() == 2 && std::isdigit(static_cast<unsigned char>(w.display_name[1])))
+            ++n;
+    }
+    return n;
+}
+} // namespace
+
+TEST_CASE("build_procedure: no descent helper when delta to pattern entry is small", "[build_procedure][helper]")
+{
+    // LSZG VRPs at 3000 ft, pattern entry at 2811 ft, delta 189 ft → no helper.
+    auto p = build_procedure(make_lszg_airport(), "06");
+    REQUIRE(p.has_value());
+    REQUIRE(count_helpers(*p) == 0);
+    REQUIRE(p->waypoints.size() == 6); // 2 VRPs + DW-BEG + DW-END + FAF + RWY
+}
+
+TEST_CASE("build_procedure: descent helper inserted on tight LSZB-shape sectors", "[build_procedure][helper]")
+{
+    auto a = make_lszb_like_airport(3000, 4000); // mid = 3500 ft, pattern entry 3073 ft, delta 427 ft
+    auto p = build_procedure(a, "14", "via S");
+    REQUIRE(p.has_value());
+    REQUIRE(count_helpers(*p) == 1);
+    // Layout: S → D1 → DW-BEG → DW-END → FAF → RWY
+    REQUIRE(p->waypoints.size() == 6);
+    REQUIRE(p->waypoints[0].display_name == "S");
+    REQUIRE(p->waypoints[1].display_name == "D1");
+    REQUIRE(p->waypoints[2].display_name == "DW-BEG");
+}
+
+TEST_CASE("build_procedure: helper position lies between VRP and ARP", "[build_procedure][helper]")
+{
+    auto a = make_lszb_like_airport(3000, 4000);
+    auto p = build_procedure(a, "14", "via S");
+    REQUIRE(p.has_value());
+
+    const auto &vrp_s  = p->waypoints[0];
+    const auto &helper = p->waypoints[1];
+
+    const double vrp_to_arp     = distance_nm(vrp_s.position, a.arp);
+    const double vrp_to_helper  = distance_nm(vrp_s.position, helper.position);
+    const double helper_to_arp  = distance_nm(helper.position, a.arp);
+
+    REQUIRE(vrp_to_helper < vrp_to_arp);
+    REQUIRE(helper_to_arp < vrp_to_arp);
+    // 1 helper out of n+1 segments → fraction 0.5 along VRP→ARP.
+    REQUIRE(vrp_to_helper == Catch::Approx(vrp_to_arp * 0.5).epsilon(0.05));
+}
+
+TEST_CASE("build_procedure: helper altitude sits between VRP and pattern entry", "[build_procedure][helper]")
+{
+    auto a = make_lszb_like_airport(3000, 4000);
+    auto p = build_procedure(a, "14", "via S");
+    REQUIRE(p.has_value());
+
+    const int vrp_alt           = *p->waypoints[0].altitude_ft;
+    const int helper_alt        = *p->waypoints[1].altitude_ft;
+    const int dw_beg_alt        = *p->waypoints[2].altitude_ft;
+    constexpr int PATTERN_ENTRY = 1673 + 1000 + 400; // elevation + 1000 AGL + DW-BEG offset
+
+    REQUIRE(vrp_alt == 3500);
+    REQUIRE(dw_beg_alt == PATTERN_ENTRY);
+    REQUIRE(helper_alt < vrp_alt);
+    REQUIRE(helper_alt > dw_beg_alt);
+}
+
+TEST_CASE("build_procedure: huge VRP altitude triggers multiple helpers, monotonic descent", "[build_procedure][helper]")
+{
+    // VRP at 5000 ft, pattern entry 3073 ft, delta 1927 ft, threshold 400 → 4 helpers.
+    auto a = make_lszb_like_airport(4500, 5500);
+    auto p = build_procedure(a, "14", "via S");
+    REQUIRE(p.has_value());
+    REQUIRE(count_helpers(*p) == 4);
+
+    REQUIRE(p->waypoints[1].display_name == "D1");
+    REQUIRE(p->waypoints[2].display_name == "D2");
+    REQUIRE(p->waypoints[3].display_name == "D3");
+    REQUIRE(p->waypoints[4].display_name == "D4");
+
+    for (std::size_t i = 1; i < p->waypoints.size(); ++i)
+    {
+        const auto &prev = p->waypoints[i - 1];
+        const auto &cur  = p->waypoints[i];
+        if (prev.altitude_ft && cur.altitude_ft)
+            REQUIRE(*cur.altitude_ft <= *prev.altitude_ft);
+    }
+}
+
+namespace
+{
+class FlatTerrainAt : public TerrainSource
+{
+  public:
+    explicit FlatTerrainAt(int elevation_ft) : elevation_(elevation_ft) {}
+    std::optional<int> elevation_ft_msl(const Coordinate &) const override { return elevation_; }
+
+  private:
+    int elevation_;
+};
+} // namespace
+
+TEST_CASE("build_procedure: terrain source raises pattern altitudes below the safe floor", "[build_procedure][terrain]")
+{
+    // Terrain at 2700 ft (e.g. Belpberg) + 500 ft margin = 3200 ft floor. The
+    // standard LSZB pattern legs (3073/2673/2273 ft) all sit below this and
+    // should be lifted; the route VRP at 3500 ft must remain untouched.
+    auto a = make_lszb_like_airport(3000, 4000);
+    FlatTerrainAt terrain{2700};
+
+    auto p = build_procedure(a, "14", "via S", terrain);
+    REQUIRE(p.has_value());
+
+    const auto find_alt = [&](const std::string &name) {
+        for (const auto &w : p->waypoints)
+            if (w.display_name == name)
+                return w.altitude_ft;
+        return std::optional<int>{};
+    };
+
+    REQUIRE(*find_alt("S") == 3500);          // VRP unchanged
+    REQUIRE(*find_alt("DW-BEG") == 3200);     // clamped up from 3073
+    REQUIRE(*find_alt("DW-END") == 3200);     // clamped up from 2673
+    REQUIRE(*find_alt("FAF") == 3200);        // clamped up from 2273
 }

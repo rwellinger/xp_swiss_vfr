@@ -15,6 +15,7 @@ add_executable(xp_swiss_vfr_tests
     ${CMAKE_SOURCE_DIR}/src/procedures/build_procedure.cpp
     ${CMAKE_SOURCE_DIR}/src/procedures/procedure_state.cpp
     ${CMAKE_SOURCE_DIR}/src/geometry/coordinate_math.cpp
+    ${CMAKE_SOURCE_DIR}/src/geometry/terrain.cpp
     test_smoke.cpp
     test_json_loader.cpp
     test_validation.cpp
@@ -24,6 +25,7 @@ add_executable(xp_swiss_vfr_tests
     test_navigraph_source.cpp
     test_procedure_state.cpp
     test_nearby_airports.cpp
+    test_terrain.cpp
 )
 
 target_include_directories(xp_swiss_vfr_tests PRIVATE
@@ -33,8 +35,13 @@ target_include_directories(xp_swiss_vfr_tests PRIVATE
 )
 
 # Path to the fixtures directory, made available to the test code.
+# XP_SWISS_VFR_TERRAIN_NO_SDK switches geometry/terrain.cpp to its no-SDK
+# build flavour: clamp_to_terrain stays linkable, default_terrain_source()
+# returns a null source, terrain_init/stop are no-ops. The SDK-backed probe
+# (terrain_xplm.cpp) is not linked into the test binary.
 target_compile_definitions(xp_swiss_vfr_tests PRIVATE
     XP_SWISS_VFR_TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+    XP_SWISS_VFR_TERRAIN_NO_SDK
 )
 
 if(MSVC)

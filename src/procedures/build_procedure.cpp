@@ -1,15 +1,21 @@
 #include "procedures/build_procedure.hpp"
 
 #include "geometry/coordinate_math.hpp"
+#include "geometry/terrain.hpp"
+
+#include <cmath>
+#include <string>
 
 namespace xpswissvfr::procedures
 {
 namespace
 {
-constexpr int         DW_BEG_OFFSET_FT     = 400;  // DW-BEG sits above pattern altitude
-constexpr int         FAF_OFFSET_FT        = -400; // FAF sits below pattern altitude
-constexpr double      METERS_PER_NM        = 1852.0;
-constexpr std::size_t DISPLAY_NAME_MAX_LEN = 6; // X1000 truncates beyond this
+constexpr int         DW_BEG_OFFSET_FT       = 400;  // DW-BEG sits above pattern altitude
+constexpr int         FAF_OFFSET_FT          = -400; // FAF sits below pattern altitude
+constexpr int         MAX_DESCENT_PER_LEG_FT = 400;  // helper threshold from VRP down to pattern entry
+constexpr int         TERRAIN_MARGIN_FT      = 500;  // clamp synthetic waypoints to terrain + this
+constexpr double      METERS_PER_NM          = 1852.0;
+constexpr std::size_t DISPLAY_NAME_MAX_LEN   = 6; // X1000 truncates beyond this
 
 const data::Runway *find_runway(const data::VfrAirport &airport, const std::string &designator)
 {
@@ -53,6 +59,39 @@ std::optional<int> vrp_altitude_ft(const data::Waypoint &vrp)
         return (*vrp.altitude_ft_min + *vrp.altitude_ft_max) / 2;
     return vrp.altitude_ft;
 }
+
+// Inserts D1, D2, ... between the last route VRP and the pattern entry when
+// the altitude delta is large enough to be uncomfortable as a single step.
+// Helpers descend linearly from the last VRP altitude toward pattern_entry_alt
+// along the line VRP → ARP — close enough to "fly toward the field while
+// descending" for the X1000 to render a clean VNAV path.
+void push_descent_helpers(Procedure &procedure, const data::VfrAirport &airport, int pattern_entry_alt_ft,
+                          const geometry::TerrainSource &terrain)
+{
+    if (procedure.waypoints.empty())
+        return;
+    const ProcedureWaypoint last_vrp = procedure.waypoints.back();
+    if (!last_vrp.altitude_ft)
+        return;
+
+    const int last_alt = *last_vrp.altitude_ft;
+    const int delta    = last_alt - pattern_entry_alt_ft;
+    if (delta <= MAX_DESCENT_PER_LEG_FT)
+        return;
+
+    const int n_helpers = static_cast<int>(std::ceil(static_cast<double>(delta) / MAX_DESCENT_PER_LEG_FT)) - 1;
+    if (n_helpers <= 0)
+        return;
+
+    for (int i = 1; i <= n_helpers; ++i)
+    {
+        const double           f   = static_cast<double>(i) / (n_helpers + 1);
+        const data::Coordinate pos = geometry::interpolate(last_vrp.position, airport.arp, f);
+        const int linear_alt = last_alt - static_cast<int>(static_cast<double>(last_alt - pattern_entry_alt_ft) * f);
+        const int safe_alt   = geometry::clamp_to_terrain(terrain, pos, linear_alt, TERRAIN_MARGIN_FT);
+        procedure.waypoints.push_back({"D" + std::to_string(i), pos, safe_alt});
+    }
+}
 } // namespace
 
 // Find the arrival route by label inside the runway's route list. Empty label
@@ -72,7 +111,7 @@ const data::ArrivalRoute *find_route(const std::vector<data::ArrivalRoute> &rout
 }
 
 std::optional<Procedure> build_procedure(const data::VfrAirport &airport, const std::string &runway_designator,
-                                         const std::string &route_label)
+                                         const std::string &route_label, const geometry::TerrainSource &terrain)
 {
     const data::Runway *runway = find_runway(airport, runway_designator);
     if (runway == nullptr)
@@ -100,12 +139,15 @@ std::optional<Procedure> build_procedure(const data::VfrAirport &airport, const 
         procedure.waypoints.push_back({truncate_display(vrp->name), vrp->position, vrp_altitude_ft(*vrp)});
     }
 
-    const int    pattern_alt_ft     = airport.elevation_ft + airport.circuit_pattern.altitude_ft_agl;
-    const double lateral_bearing    = downwind_lateral_bearing(*runway);
-    const double half_runway_nm     = (runway->length_m / 2.0) / METERS_PER_NM;
-    const double reverse_heading    = runway->heading_true + 180.0;
-    const double downwind_offset_nm = airport.circuit_pattern.downwind_offset_nm;
-    const double final_distance_nm  = airport.circuit_pattern.final_distance_nm;
+    const int    pattern_alt_ft       = airport.elevation_ft + airport.circuit_pattern.altitude_ft_agl;
+    const int    pattern_entry_alt_ft = pattern_alt_ft + DW_BEG_OFFSET_FT;
+    const double lateral_bearing      = downwind_lateral_bearing(*runway);
+    const double half_runway_nm       = (runway->length_m / 2.0) / METERS_PER_NM;
+    const double reverse_heading      = runway->heading_true + 180.0;
+    const double downwind_offset_nm   = airport.circuit_pattern.downwind_offset_nm;
+    const double final_distance_nm    = airport.circuit_pattern.final_distance_nm;
+
+    push_descent_helpers(procedure, airport, pattern_entry_alt_ft, terrain);
 
     // Landing threshold (half a runway length opposite the runway heading) and
     // take-off threshold (half a runway length along the runway heading).
@@ -123,13 +165,25 @@ std::optional<Procedure> build_procedure(const data::VfrAirport &airport, const 
     const data::Coordinate dw_end_position = geometry::offset(faf_position, lateral_bearing, downwind_offset_nm);
     const data::Coordinate dw_beg_position = geometry::offset(thr_takeoff, lateral_bearing, downwind_offset_nm);
 
-    procedure.waypoints.push_back({"DW-BEG", dw_beg_position, pattern_alt_ft + DW_BEG_OFFSET_FT});
-    procedure.waypoints.push_back({"DW-END", dw_end_position, pattern_alt_ft});
-    procedure.waypoints.push_back({"FAF", faf_position, pattern_alt_ft + FAF_OFFSET_FT});
+    const int dw_beg_alt =
+        geometry::clamp_to_terrain(terrain, dw_beg_position, pattern_entry_alt_ft, TERRAIN_MARGIN_FT);
+    const int dw_end_alt = geometry::clamp_to_terrain(terrain, dw_end_position, pattern_alt_ft, TERRAIN_MARGIN_FT);
+    const int faf_alt =
+        geometry::clamp_to_terrain(terrain, faf_position, pattern_alt_ft + FAF_OFFSET_FT, TERRAIN_MARGIN_FT);
+
+    procedure.waypoints.push_back({"DW-BEG", dw_beg_position, dw_beg_alt});
+    procedure.waypoints.push_back({"DW-END", dw_end_position, dw_end_alt});
+    procedure.waypoints.push_back({"FAF", faf_position, faf_alt});
     // RWY waypoint sits at the landing threshold; its altitude is the airport
     // elevation so the X1000 has a sensible VNAV target (FAF → threshold).
     procedure.waypoints.push_back({truncate_display("RWY" + runway_designator), thr_landing, airport.elevation_ft});
 
     return procedure;
+}
+
+std::optional<Procedure> build_procedure(const data::VfrAirport &airport, const std::string &runway_designator,
+                                         const std::string &route_label)
+{
+    return build_procedure(airport, runway_designator, route_label, geometry::default_terrain_source());
 }
 } // namespace xpswissvfr::procedures

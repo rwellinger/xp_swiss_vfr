@@ -17,4 +17,9 @@ double bearing_deg(const data::Coordinate &from, const data::Coordinate &to);
 
 // Coordinate that is `distance_nm` away from `from` along the given bearing.
 data::Coordinate offset(const data::Coordinate &from, double bearing_deg, double distance_nm);
+
+// Linear interpolation between two coordinates. fraction = 0 returns `a`,
+// fraction = 1 returns `b`. Equirectangular — exactly matches the
+// distance_nm / offset family at VFR-pattern scale.
+data::Coordinate interpolate(const data::Coordinate &a, const data::Coordinate &b, double fraction);
 } // namespace xpswissvfr::geometry
